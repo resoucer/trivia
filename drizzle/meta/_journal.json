@@ -15,6 +15,13 @@
       "when": 1792457272550,
       "tag": "0001_play_dedup",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "6",
+      "when": 1792457651420,
+      "tag": "0002_auth_attempts",
+      "breakpoints": true
     }
   ]
 }

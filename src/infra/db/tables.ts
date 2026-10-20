@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
 import { check, index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-export { passwordCredentials, playDedup, plays, sessions, triviaClaims, trivias, users };
+export { authAttempts, passwordCredentials, playDedup, plays, sessions, triviaClaims, trivias, users };
 
 const users = sqliteTable("users", {
   id: text("id").primaryKey(),
@@ -79,4 +79,15 @@ const playDedup = sqliteTable(
     playId: text("play_id").notNull(),
   },
   (t) => [primaryKey({ columns: [t.triviaId, t.visitorKey, t.day] }), index("play_dedup_day_idx").on(t.day)],
+);
+
+/** Attempts per (action + HMAC of the client IP, fixed window). Raw IPs are never stored. */
+const authAttempts = sqliteTable(
+  "auth_attempts",
+  {
+    key: text("key").notNull(),
+    windowStart: text("window_start").notNull(),
+    count: integer("count").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.key, t.windowStart] }), index("auth_attempts_window_idx").on(t.windowStart)],
 );
