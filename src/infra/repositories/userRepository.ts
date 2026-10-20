@@ -1,4 +1,4 @@
-import { and, eq, gt } from "drizzle-orm";
+import { and, eq, gt, lte } from "drizzle-orm";
 import { errAsync, okAsync, ResultAsync } from "neverthrow";
 import type { UserId } from "@/domain/trivia/ids";
 import { type Email, schema_User, type User } from "@/domain/user/user";
@@ -10,6 +10,7 @@ import { parseWith } from "@/lib/validation";
 
 export type { InsertUserError, UserWithPasswordHash };
 export {
+  deleteExpiredSessions,
   deleteSession,
   findUserBySessionTokenHash,
   findUserWithPasswordByEmail,
@@ -107,5 +108,12 @@ function findUserBySessionTokenHash(db: Db, tokenHash: string, now: Date): Resul
 function deleteSession(db: Db, tokenHash: string): ResultAsync<null, DbError> {
   return ResultAsync.fromPromise(db.delete(sessions).where(eq(sessions.tokenHash, tokenHash)), dbFailure).map(
     (): null => null,
+  );
+}
+
+/** Expired sessions are already ignored by `findUserBySessionTokenHash`; this just reclaims space. */
+function deleteExpiredSessions(db: Db, now: Date): ResultAsync<number, DbError> {
+  return ResultAsync.fromPromise(db.delete(sessions).where(lte(sessions.expiresAt, now.toISOString())), dbFailure).map(
+    (result): number => result.rowsAffected,
   );
 }

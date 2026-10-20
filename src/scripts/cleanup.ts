@@ -7,7 +7,8 @@ import { databaseUrl, openDb } from "@/infra/db/client";
 
 /**
  * `npm run cleanup` (meant for a daily cron): deletes anonymous trivias inactive for more than
- * ANONYMOUS_TTL_DAYS and play dedup rows older than PLAY_DEDUP_RETENTION_DAYS.
+ * ANONYMOUS_TTL_DAYS, play dedup rows older than PLAY_DEDUP_RETENTION_DAYS, expired sessions and
+ * old login rate-limit counters.
  */
 const outcome: Result<CleanupReport, AppError> = await openDb(databaseUrl()).andThen((db) =>
   cleanupUseCase(db, new Date()),
@@ -22,6 +23,8 @@ outcome.match(
     console.log(
       `${report.prunedPlayDedupRows} registro(s) de contagem única com mais de ${PLAY_DEDUP_RETENTION_DAYS} dias removido(s).`,
     );
+    console.log(`${report.expiredSessions} sessão(ões) expirada(s) removida(s).`);
+    console.log(`${report.prunedAuthAttempts} contador(es) de tentativas de login antigo(s) removido(s).`);
   },
   (error) => {
     console.error("Falha na limpeza:", error);
