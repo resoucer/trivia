@@ -15,3 +15,4 @@ Para criar um novo ADR: copie [0000-template.md](0000-template.md) para o próxi
 | [0006](0006-sqlite-drizzle-libsql.md) | SQLite (libSQL) com Drizzle ORM, com caminho para Postgres | Aceito |
 | [0007](0007-autenticacao-opcional.md) | Autenticação opcional com e-mail e senha e sessões em cookie | Aceito |
 | [0008](0008-modelo-de-propriedade.md) | Propriedade da trivia: anônima ou de uma conta | Aceito |
+| [0009](0009-expiracao-de-trivias-anonimas.md) | Trivias anônimas expiram após 30 dias sem atividade | Aceito |
