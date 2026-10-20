@@ -1,4 +1,4 @@
-import { clientErrorMessage, describeIssuePath, type ClientError } from "@/client/api";
+import { type ClientError, clientErrorMessage, describeIssuePath } from "@/client/api";
 
 export { ErrorBox };
 
@@ -20,4 +20,3 @@ function ErrorBox({ error }: { error: ClientError }) {
     </div>
   );
 }
-

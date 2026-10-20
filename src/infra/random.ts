@@ -1,7 +1,7 @@
 import { createHash, randomBytes } from "node:crypto";
 import { PlayId, TriviaId, UserId } from "@/domain/trivia/ids";
 
-export { newTriviaId, newPlayId, newUserId, newSecretToken, sha256 };
+export { newPlayId, newSecretToken, newTriviaId, newUserId, sha256 };
 
 function randomSlug(bytes: number): string {
   return randomBytes(bytes).toString("base64url");

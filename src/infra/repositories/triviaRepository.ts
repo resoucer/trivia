@@ -1,8 +1,8 @@
 import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
-import { ResultAsync, errAsync, okAsync } from "neverthrow";
+import { errAsync, okAsync, ResultAsync } from "neverthrow";
 import { z } from "zod";
-import type { Play } from "@/domain/trivia/play";
 import { TriviaId, type UserId } from "@/domain/trivia/ids";
+import type { Play } from "@/domain/trivia/play";
 import {
   encodeTrivia,
   schema_Question,
@@ -12,24 +12,24 @@ import {
   type TriviaSummary,
 } from "@/domain/trivia/trivia";
 import type { Db } from "@/infra/db/db";
-import { corruptData, dbFailure, type DbError } from "@/infra/db/dbError";
+import { corruptData, type DbError, dbFailure } from "@/infra/db/dbError";
 import { plays, triviaClaims, trivias } from "@/infra/db/tables";
 import { jsonString } from "@/lib/json";
-import { Just, Nothing, type Maybe } from "@/lib/maybe";
+import { Just, type Maybe, Nothing } from "@/lib/maybe";
 import { parseWith } from "@/lib/validation";
 
 export {
-  PublicListOrder,
-  insertTrivia,
+  claimTriviaRecord,
+  deleteAnonymousInactiveBefore,
+  deleteTrivia,
+  findClaimTokenHash,
   findTrivia,
-  saveTrivia,
-  recordPlay,
+  insertTrivia,
   listPublicTrivias,
   listTriviasOwnedBy,
-  deleteTrivia,
-  deleteAnonymousInactiveBefore,
-  findClaimTokenHash,
-  claimTriviaRecord,
+  PublicListOrder,
+  recordPlay,
+  saveTrivia,
 };
 
 const PublicListOrder = { Popular: "popular", Recent: "recent" } as const;
@@ -87,19 +87,21 @@ function insertTrivia(db: Db, trivia: Trivia, claimTokenHash: Maybe<string>): Re
   const insert = db.insert(trivias).values(toRow(trivia));
   const run: Promise<unknown> =
     claimTokenHash.type === "just"
-      ? db.batch([insert, db.insert(triviaClaims).values({ triviaId: trivia.id.value, tokenHash: claimTokenHash.value })])
+      ? db.batch([
+          insert,
+          db.insert(triviaClaims).values({ triviaId: trivia.id.value, tokenHash: claimTokenHash.value }),
+        ])
       : insert.then((r) => r);
   return ResultAsync.fromPromise(run, dbFailure).map((): Trivia => trivia);
 }
 
 function findTrivia(db: Db, id: TriviaId): ResultAsync<Maybe<Trivia>, DbError> {
-  return ResultAsync.fromPromise(
-    db.select().from(trivias).where(eq(trivias.id, id.value)).limit(1),
-    dbFailure,
-  ).andThen((rows) => {
-    const row = rows[0];
-    return row === undefined ? okAsync(Nothing<Trivia>()) : decodeRow(row).map((t) => Just(t));
-  });
+  return ResultAsync.fromPromise(db.select().from(trivias).where(eq(trivias.id, id.value)).limit(1), dbFailure).andThen(
+    (rows) => {
+      const row = rows[0];
+      return row === undefined ? okAsync(Nothing<Trivia>()) : decodeRow(row).map((t) => Just(t));
+    },
+  );
 }
 
 /** Persists content, ownership and timestamps of an existing trivia (counters are left to `recordPlay`). */
@@ -223,7 +225,11 @@ function deleteAnonymousInactiveBefore(db: Db, cutoff: Date): ResultAsync<Readon
 
 function findClaimTokenHash(db: Db, id: TriviaId): ResultAsync<Maybe<string>, DbError> {
   return ResultAsync.fromPromise(
-    db.select({ tokenHash: triviaClaims.tokenHash }).from(triviaClaims).where(eq(triviaClaims.triviaId, id.value)).limit(1),
+    db
+      .select({ tokenHash: triviaClaims.tokenHash })
+      .from(triviaClaims)
+      .where(eq(triviaClaims.triviaId, id.value))
+      .limit(1),
     dbFailure,
   ).map((rows): Maybe<string> => {
     const row = rows[0];

@@ -63,6 +63,8 @@ describe("edição e reivindicação", () => {
   });
 
   it("não reivindica trivia que já tem dono", () => {
-    expect(claimTrivia(ownedTrivia(bob, {}, "owned-b"), alice, NOW)._unsafeUnwrapErr()).toEqual({ type: "already-owned" });
+    expect(claimTrivia(ownedTrivia(bob, {}, "owned-b"), alice, NOW)._unsafeUnwrapErr()).toEqual({
+      type: "already-owned",
+    });
   });
 });

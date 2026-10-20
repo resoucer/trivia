@@ -25,16 +25,27 @@ async function RootLayout({ children }: { children: ReactNode }) {
             <Link href="/" className="mr-auto text-lg font-bold text-indigo-600">
               Trivia
             </Link>
-            <Link href="/ranking" className="text-slate-600 hover:text-slate-900">Ranking</Link>
-            <Link href="/criar" className="rounded-lg bg-indigo-600 px-3 py-1.5 font-medium text-white hover:bg-indigo-700">Criar trivia</Link>
+            <Link href="/ranking" className="text-slate-600 hover:text-slate-900">
+              Ranking
+            </Link>
+            <Link
+              href="/criar"
+              className="rounded-lg bg-indigo-600 px-3 py-1.5 font-medium text-white hover:bg-indigo-700"
+            >
+              Criar trivia
+            </Link>
             {viewer.type === "user" ? (
               <>
-                <Link href="/minhas" className="text-slate-600 hover:text-slate-900">Minhas trivias</Link>
+                <Link href="/minhas" className="text-slate-600 hover:text-slate-900">
+                  Minhas trivias
+                </Link>
                 <span className="text-slate-400">{viewer.user.displayName.value}</span>
                 <LogoutButton />
               </>
             ) : (
-              <Link href="/entrar" className="text-slate-600 hover:text-slate-900">Entrar</Link>
+              <Link href="/entrar" className="text-slate-600 hover:text-slate-900">
+                Entrar
+              </Link>
             )}
           </nav>
         </header>

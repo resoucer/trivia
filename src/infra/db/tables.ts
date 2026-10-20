@@ -1,6 +1,6 @@
 import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-export { users, passwordCredentials, sessions, trivias, triviaClaims, plays };
+export { passwordCredentials, plays, sessions, triviaClaims, trivias, users };
 
 const users = sqliteTable("users", {
   id: text("id").primaryKey(),

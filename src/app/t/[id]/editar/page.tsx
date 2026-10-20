@@ -15,7 +15,9 @@ async function EditPage({ params }: { params: Promise<{ id: string }> }) {
     requestContext().andThen((ctx) =>
       ctx.viewer.type === "anonymous"
         ? errAsync(unauthenticated())
-        : loadTrivia(ctx.db, id, ctx.now).andThen((t) => (canEditTrivia(t, ctx.viewer) ? okAsync(t) : errAsync(forbidden()))),
+        : loadTrivia(ctx.db, id, ctx.now).andThen((t) =>
+            canEditTrivia(t, ctx.viewer) ? okAsync(t) : errAsync(forbidden()),
+          ),
     ),
     `/t/${id}/editar`,
   );

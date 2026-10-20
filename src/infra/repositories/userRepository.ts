@@ -1,21 +1,21 @@
 import { and, eq, gt } from "drizzle-orm";
-import { ResultAsync, errAsync, okAsync } from "neverthrow";
+import { errAsync, okAsync, ResultAsync } from "neverthrow";
 import type { UserId } from "@/domain/trivia/ids";
-import { schema_User, type Email, type User } from "@/domain/user/user";
+import { type Email, schema_User, type User } from "@/domain/user/user";
 import type { Db } from "@/infra/db/db";
-import { corruptData, dbFailure, type DbError } from "@/infra/db/dbError";
+import { corruptData, type DbError, dbFailure } from "@/infra/db/dbError";
 import { passwordCredentials, sessions, users } from "@/infra/db/tables";
-import { Just, Nothing, type Maybe } from "@/lib/maybe";
+import { Just, type Maybe, Nothing } from "@/lib/maybe";
 import { parseWith } from "@/lib/validation";
 
+export type { InsertUserError, UserWithPasswordHash };
 export {
-  insertUserWithPassword,
+  deleteSession,
+  findUserBySessionTokenHash,
   findUserWithPasswordByEmail,
   insertSession,
-  findUserBySessionTokenHash,
-  deleteSession,
+  insertUserWithPassword,
 };
-export type { UserWithPasswordHash, InsertUserError };
 
 type UserRow = typeof users.$inferSelect;
 type UserWithPasswordHash = { readonly user: User; readonly passwordHash: string };
@@ -71,7 +71,13 @@ function findUserWithPasswordByEmail(db: Db, email: Email): ResultAsync<Maybe<Us
   });
 }
 
-function insertSession(db: Db, tokenHash: string, userId: UserId, now: Date, expiresAt: Date): ResultAsync<null, DbError> {
+function insertSession(
+  db: Db,
+  tokenHash: string,
+  userId: UserId,
+  now: Date,
+  expiresAt: Date,
+): ResultAsync<null, DbError> {
   return ResultAsync.fromPromise(
     db.insert(sessions).values({
       tokenHash,

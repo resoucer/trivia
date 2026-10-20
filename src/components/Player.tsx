@@ -2,9 +2,9 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { HttpMethod, requestJson, type ClientError } from "@/client/api";
+import { type ClientError, HttpMethod, requestJson } from "@/client/api";
 import { ErrorBox } from "@/components/ErrorBox";
-import { schema_PlayResultDto, type PlayResultDto, type PublicTriviaDto } from "@/contract/dto";
+import { type PlayResultDto, type PublicTriviaDto, schema_PlayResultDto } from "@/contract/dto";
 import { gradeLabel, gradeOf } from "@/domain/trivia/scoring";
 
 export { Player };
@@ -25,7 +25,11 @@ function Player({ trivia }: { trivia: PublicTriviaDto }) {
   const locked = state.type === "submitting" || state.type === "done";
 
   const choose = (questionId: string, choiceId: string): void =>
-    setState((s) => (s.type === "done" || s.type === "submitting" ? s : { type: "answering", answers: { ...s.answers, [questionId]: choiceId } }));
+    setState((s) =>
+      s.type === "done" || s.type === "submitting"
+        ? s
+        : { type: "answering", answers: { ...s.answers, [questionId]: choiceId } },
+    );
 
   const submit = (): void => {
     const answers = state.answers;
@@ -49,7 +53,9 @@ function Player({ trivia }: { trivia: PublicTriviaDto }) {
 
   return (
     <div className="space-y-6">
-      {state.type === "done" ? <ScoreCard result={state.result} onRetry={() => setState({ type: "answering", answers: {} })} /> : null}
+      {state.type === "done" ? (
+        <ScoreCard result={state.result} onRetry={() => setState({ type: "answering", answers: {} })} />
+      ) : null}
 
       {trivia.questions.map((question, qi) => {
         const result = resultFor(question.id);
@@ -118,7 +124,11 @@ function ScoreCard({ result, onRetry }: { result: PlayResultDto; onRetry: () => 
       </p>
       <p className="mt-2">{gradeLabel(gradeOf(result))}</p>
       <p className="mt-1 text-sm text-indigo-100">Esta trivia já foi jogada {result.playCount} vez(es).</p>
-      <button type="button" onClick={onRetry} className="mt-4 rounded-lg bg-white/15 px-4 py-2 text-sm font-medium hover:bg-white/25">
+      <button
+        type="button"
+        onClick={onRetry}
+        className="mt-4 rounded-lg bg-white/15 px-4 py-2 text-sm font-medium hover:bg-white/25"
+      >
         Jogar de novo
       </button>
     </div>

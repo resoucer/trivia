@@ -1,10 +1,10 @@
+import { okAsync } from "neverthrow";
 import { claimTriviaUseCase } from "@/application/triviaService";
 import { encodePublicTrivia } from "@/contract/dto";
-import { toPublicTrivia } from "@/domain/trivia/trivia";
 import { TriviaId } from "@/domain/trivia/ids";
+import { toPublicTrivia } from "@/domain/trivia/trivia";
 import { clearClaimToken, readClaimToken } from "@/infra/auth/cookies";
 import { Nothing } from "@/lib/maybe";
-import { okAsync } from "neverthrow";
 import { parseWith } from "@/lib/validation";
 import { requestContext } from "@/server/context";
 import { jsonResponse, respond } from "@/server/http";

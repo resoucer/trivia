@@ -1,11 +1,11 @@
-import { randomBytes, scrypt, timingSafeEqual, type BinaryLike, type ScryptOptions } from "node:crypto";
-import { ResultAsync, errAsync } from "neverthrow";
+import { type BinaryLike, randomBytes, type ScryptOptions, scrypt, timingSafeEqual } from "node:crypto";
+import { errAsync, ResultAsync } from "neverthrow";
 import { z } from "zod";
 import { jsonString } from "@/lib/json";
 import { parseWith } from "@/lib/validation";
 
-export { hashPassword, verifyPassword };
 export type { PasswordHashError };
+export { hashPassword, verifyPassword };
 
 type PasswordHashError =
   | { readonly type: "crypto-failure"; readonly message: string }
@@ -59,7 +59,11 @@ function verifyPassword(password: string, storedHash: string): ResultAsync<boole
     (stored) => {
       const expected = Buffer.from(stored.hash, "base64");
       return ResultAsync.fromPromise(
-        deriveKey(password, Buffer.from(stored.salt, "base64"), stored.keyLength, { N: stored.N, r: stored.r, p: stored.p }),
+        deriveKey(password, Buffer.from(stored.salt, "base64"), stored.keyLength, {
+          N: stored.N,
+          r: stored.r,
+          p: stored.p,
+        }),
         cryptoFailure,
       ).map((key): boolean => key.length === expected.length && timingSafeEqual(key, expected));
     },

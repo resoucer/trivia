@@ -1,9 +1,9 @@
 import { createClient } from "@libsql/client";
 import { drizzle } from "drizzle-orm/libsql";
-import { ResultAsync, errAsync } from "neverthrow";
+import { errAsync, ResultAsync } from "neverthrow";
 import type { Db } from "@/infra/db/db";
+import { type DbError, dbFailure } from "@/infra/db/dbError";
 import { DDL } from "@/infra/db/ddl";
-import { dbFailure, type DbError } from "@/infra/db/dbError";
 import { seedIfEmpty } from "@/infra/db/seed";
 import * as tables from "@/infra/db/tables";
 

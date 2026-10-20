@@ -1,6 +1,6 @@
 import { editTriviaUseCase, loadTrivia } from "@/application/triviaService";
-import { toPublicTrivia } from "@/domain/trivia/trivia";
 import { encodePublicTrivia } from "@/contract/dto";
+import { toPublicTrivia } from "@/domain/trivia/trivia";
 import { requestContext } from "@/server/context";
 import { jsonResponse, readJsonBody, respond } from "@/server/http";
 

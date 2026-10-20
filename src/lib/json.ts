@@ -9,7 +9,9 @@ const safeJsonParse = Result.fromThrowable(
 );
 
 /** Zod combinator: a string containing JSON, decoded with `inner`. No ad-hoc parsing at call sites. */
-function jsonString<S extends z.ZodType>(inner: S): z.ZodPipe<z.ZodPipe<z.ZodString, z.ZodTransform<unknown, string>>, S> {
+function jsonString<S extends z.ZodType>(
+  inner: S,
+): z.ZodPipe<z.ZodPipe<z.ZodString, z.ZodTransform<unknown, string>>, S> {
   return z
     .string()
     .transform((text, ctx): unknown =>

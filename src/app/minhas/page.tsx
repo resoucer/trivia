@@ -7,7 +7,10 @@ import { unwrapForPage } from "@/server/page";
 export { MyTriviasPage as default };
 
 async function MyTriviasPage() {
-  const list = await unwrapForPage(requestContext().andThen((ctx) => myTriviasUseCase(ctx.db, ctx.viewer)), "/minhas");
+  const list = await unwrapForPage(
+    requestContext().andThen((ctx) => myTriviasUseCase(ctx.db, ctx.viewer)),
+    "/minhas",
+  );
   return (
     <div className="space-y-4">
       <h1 className="text-2xl font-bold">Minhas trivias</h1>

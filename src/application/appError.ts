@@ -1,10 +1,10 @@
-import type { DbError } from "@/infra/db/dbError";
-import type { PasswordHashError } from "@/infra/auth/password";
 import type { ScoringError } from "@/domain/trivia/scoring";
+import type { PasswordHashError } from "@/infra/auth/password";
+import type { DbError } from "@/infra/db/dbError";
 import type { ValidationError } from "@/lib/validation";
 
-export { notFound, forbidden, unauthenticated };
 export type { AppError };
+export { forbidden, notFound, unauthenticated };
 
 /** Every failure a use case can produce. The HTTP layer maps each variant exhaustively. */
 type AppError =

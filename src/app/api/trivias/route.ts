@@ -1,12 +1,12 @@
+import { okAsync } from "neverthrow";
 import { z } from "zod";
 import { createTriviaUseCase, rankingUseCase, recentUseCase } from "@/application/triviaService";
-import { encodeRanked, encodeSummary, sharePath, type CreatedTriviaDto } from "@/contract/dto";
+import { type CreatedTriviaDto, encodeRanked, encodeSummary, sharePath } from "@/contract/dto";
 import { writeClaimToken } from "@/infra/auth/cookies";
 import { PublicListOrder } from "@/infra/repositories/triviaRepository";
-import { okAsync } from "neverthrow";
+import { parseWith } from "@/lib/validation";
 import { requestContext } from "@/server/context";
 import { jsonResponse, readJsonBody, respond } from "@/server/http";
-import { parseWith } from "@/lib/validation";
 
 export { GET, POST };
 
@@ -20,9 +20,7 @@ function GET(request: Request): Promise<Response> {
   const query = Object.fromEntries(new URL(request.url).searchParams);
   return respond(
     parseWith(schema_ListQuery, query)
-      .asyncAndThen((q) =>
-        requestContext().map((ctx) => ({ ctx, q })),
-      )
+      .asyncAndThen((q) => requestContext().map((ctx) => ({ ctx, q })))
       .andThen(({ ctx, q }) => {
         switch (q.order) {
           case PublicListOrder.Recent:
@@ -49,11 +47,13 @@ function POST(request: Request): Promise<Response> {
           (created.claimToken.type === "just"
             ? writeClaimToken(created.trivia.id, created.claimToken.value)
             : okAsync(null)
-          ).map((): CreatedTriviaDto => ({
-            id: created.trivia.id.value,
-            sharePath: sharePath(created.trivia.id),
-            ownerType: created.trivia.owner.type,
-          })),
+          ).map(
+            (): CreatedTriviaDto => ({
+              id: created.trivia.id.value,
+              sharePath: sharePath(created.trivia.id),
+              ownerType: created.trivia.owner.type,
+            }),
+          ),
         ),
     ),
     (body) => jsonResponse(body, 201),

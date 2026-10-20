@@ -1,8 +1,8 @@
 import type { PlayId, TriviaId } from "@/domain/trivia/ids";
 import type { Score } from "@/domain/trivia/scoring";
 
-export { createPlay };
 export type { Play };
+export { createPlay };
 
 type Play = {
   readonly id: PlayId;

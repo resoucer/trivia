@@ -1,4 +1,4 @@
-import { ResultAsync, errAsync, okAsync } from "neverthrow";
+import { errAsync, okAsync, ResultAsync } from "neverthrow";
 import type { AppError } from "@/application/appError";
 import { schema_LoginInput, schema_SignupInput, type User, type Viewer } from "@/domain/user/user";
 import { hashPassword, verifyPassword } from "@/infra/auth/password";
@@ -14,8 +14,8 @@ import {
 import type { Maybe } from "@/lib/maybe";
 import { parseWith } from "@/lib/validation";
 
-export { signupUseCase, loginUseCase, logoutUseCase, viewerFromSessionToken };
 export type { StartedSession };
+export { loginUseCase, logoutUseCase, signupUseCase, viewerFromSessionToken };
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 

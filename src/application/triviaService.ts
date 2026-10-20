@@ -1,27 +1,26 @@
-import { ResultAsync, errAsync, okAsync, type Result } from "neverthrow";
+import { errAsync, okAsync, type Result, ResultAsync } from "neverthrow";
 import { z } from "zod";
-import { forbidden, notFound, unauthenticated, type AppError } from "@/application/appError";
+import { type AppError, forbidden, notFound, unauthenticated } from "@/application/appError";
 import { TriviaId } from "@/domain/trivia/ids";
 import { canEditTrivia, claimTrivia, expirationCutoff, isExpired } from "@/domain/trivia/lifecycle";
+import { anonymousOwner, userOwner } from "@/domain/trivia/owner";
 import { createPlay } from "@/domain/trivia/play";
-import { rankByPlays, recentFirst, type RankedTrivia } from "@/domain/trivia/ranking";
-import { schema_Submission, scoreSubmission, type Score } from "@/domain/trivia/scoring";
+import { type RankedTrivia, rankByPlays, recentFirst } from "@/domain/trivia/ranking";
+import { type Score, schema_Submission, scoreSubmission } from "@/domain/trivia/scoring";
 import {
+  type Creator,
   createTrivia,
   editTrivia,
   schema_TriviaDraft,
-  touchTrivia,
-  type Creator,
   type Trivia,
   type TriviaSummary,
+  touchTrivia,
 } from "@/domain/trivia/trivia";
-import { anonymousOwner, userOwner } from "@/domain/trivia/owner";
 import { DisplayName } from "@/domain/user/displayName";
 import type { Viewer } from "@/domain/user/user";
 import type { Db } from "@/infra/db/db";
 import { newPlayId, newSecretToken, newTriviaId, sha256 } from "@/infra/random";
 import {
-  PublicListOrder,
   claimTriviaRecord,
   deleteAnonymousInactiveBefore,
   deleteTrivia,
@@ -30,24 +29,25 @@ import {
   insertTrivia,
   listPublicTrivias,
   listTriviasOwnedBy,
+  PublicListOrder,
   recordPlay,
   saveTrivia,
 } from "@/infra/repositories/triviaRepository";
-import { Just, Nothing, type Maybe } from "@/lib/maybe";
+import { Just, type Maybe, Nothing } from "@/lib/maybe";
 import { parseWith, type ValidationError } from "@/lib/validation";
 
+export type { CreatedTrivia, PlayOutcome };
 export {
-  createTriviaUseCase,
-  loadTrivia,
-  playTriviaUseCase,
-  editTriviaUseCase,
   claimTriviaUseCase,
+  cleanupExpiredUseCase,
+  createTriviaUseCase,
+  editTriviaUseCase,
+  loadTrivia,
+  myTriviasUseCase,
+  playTriviaUseCase,
   rankingUseCase,
   recentUseCase,
-  myTriviasUseCase,
-  cleanupExpiredUseCase,
 };
-export type { CreatedTrivia, PlayOutcome };
 
 type CreatedTrivia = {
   readonly trivia: Trivia;
@@ -124,7 +124,13 @@ function playTriviaUseCase(db: Db, rawId: string, input: unknown, now: Date): Re
   );
 }
 
-function editTriviaUseCase(db: Db, viewer: Viewer, rawId: string, input: unknown, now: Date): ResultAsync<Trivia, AppError> {
+function editTriviaUseCase(
+  db: Db,
+  viewer: Viewer,
+  rawId: string,
+  input: unknown,
+  now: Date,
+): ResultAsync<Trivia, AppError> {
   if (viewer.type === "anonymous") return errAsync(unauthenticated());
   return loadTrivia(db, rawId, now).andThen((trivia) => {
     if (!canEditTrivia(trivia, viewer)) return errAsync<Trivia, AppError>(forbidden());

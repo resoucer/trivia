@@ -3,14 +3,17 @@
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { HttpMethod, requestJson, type ClientError } from "@/client/api";
+import { type ClientError, HttpMethod, requestJson } from "@/client/api";
 import { ErrorBox } from "@/components/ErrorBox";
 import { schema_ViewerDto } from "@/contract/dto";
 
 export { AuthForm, LogoutButton };
 
 type AuthMode = "login" | "signup";
-type FormState = { readonly type: "idle" } | { readonly type: "sending" } | { readonly type: "failed"; readonly error: ClientError };
+type FormState =
+  | { readonly type: "idle" }
+  | { readonly type: "sending" }
+  | { readonly type: "failed"; readonly error: ClientError };
 
 const inputClass =
   "w-full rounded-lg border border-slate-300 bg-white px-3 py-2 focus:border-indigo-500 focus:outline-none focus:ring-2 focus:ring-indigo-200";
@@ -48,12 +51,23 @@ function AuthForm({ mode, next }: { mode: AuthMode; next: string }) {
       {mode === "signup" ? (
         <label className="block space-y-1">
           <span className="text-sm font-medium text-slate-700">Nome público</span>
-          <input className={inputClass} value={displayName} onChange={(e) => setDisplayName(e.target.value)} autoComplete="nickname" />
+          <input
+            className={inputClass}
+            value={displayName}
+            onChange={(e) => setDisplayName(e.target.value)}
+            autoComplete="nickname"
+          />
         </label>
       ) : null}
       <label className="block space-y-1">
         <span className="text-sm font-medium text-slate-700">E-mail</span>
-        <input className={inputClass} type="email" value={email} onChange={(e) => setEmail(e.target.value)} autoComplete="email" />
+        <input
+          className={inputClass}
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          autoComplete="email"
+        />
       </label>
       <label className="block space-y-1">
         <span className="text-sm font-medium text-slate-700">Senha</span>
@@ -76,11 +90,17 @@ function AuthForm({ mode, next }: { mode: AuthMode; next: string }) {
       <p className="text-center text-sm text-slate-600">
         {mode === "login" ? (
           <>
-            Não tem conta? <Link className="text-indigo-600 hover:underline" href={`/cadastro?next=${encodeURIComponent(next)}`}>Cadastre-se</Link>
+            Não tem conta?{" "}
+            <Link className="text-indigo-600 hover:underline" href={`/cadastro?next=${encodeURIComponent(next)}`}>
+              Cadastre-se
+            </Link>
           </>
         ) : (
           <>
-            Já tem conta? <Link className="text-indigo-600 hover:underline" href={`/entrar?next=${encodeURIComponent(next)}`}>Entrar</Link>
+            Já tem conta?{" "}
+            <Link className="text-indigo-600 hover:underline" href={`/entrar?next=${encodeURIComponent(next)}`}>
+              Entrar
+            </Link>
           </>
         )}
       </p>

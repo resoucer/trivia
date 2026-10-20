@@ -1,7 +1,7 @@
 import Link from "next/link";
 import type { RankedTriviaDto, TriviaSummaryDto } from "@/contract/dto";
 
-export { TriviaList, RankingList };
+export { RankingList, TriviaList };
 
 function plural(n: number, one: string, many: string): string {
   return `${n} ${n === 1 ? one : many}`;
@@ -10,7 +10,8 @@ function plural(n: number, one: string, many: string): string {
 function Meta({ trivia }: { trivia: TriviaSummaryDto }) {
   return (
     <p className="text-sm text-slate-500">
-      por {trivia.authorName} · {plural(trivia.questionCount, "pergunta", "perguntas")} · {plural(trivia.playCount, "partida", "partidas")}
+      por {trivia.authorName} · {plural(trivia.questionCount, "pergunta", "perguntas")} ·{" "}
+      {plural(trivia.playCount, "partida", "partidas")}
     </p>
   );
 }
@@ -37,7 +38,10 @@ function RankingList({ items }: { items: ReadonlyArray<RankedTriviaDto> }) {
     <ol className="divide-y divide-slate-200 overflow-hidden rounded-2xl border border-slate-200 bg-white">
       {items.map(({ position, trivia }) => (
         <li key={trivia.id}>
-          <Link href={`/t/${encodeURIComponent(trivia.id)}`} className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50">
+          <Link
+            href={`/t/${encodeURIComponent(trivia.id)}`}
+            className="flex items-center gap-4 px-5 py-4 hover:bg-slate-50"
+          >
             <span className="w-8 text-center text-xl font-bold text-indigo-600">{position}º</span>
             <span>
               <span className="block font-medium text-slate-900">{trivia.title}</span>

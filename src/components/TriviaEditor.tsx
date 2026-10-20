@@ -2,13 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { HttpMethod, requestJson, type ClientError } from "@/client/api";
+import { type ClientError, HttpMethod, requestJson } from "@/client/api";
 import { ErrorBox } from "@/components/ErrorBox";
 import { emptyQuestionForm, schema_CreatedTriviaDto, schema_PublicTriviaDto, type TriviaFormDto } from "@/contract/dto";
 import { TRIVIA_LIMITS } from "@/domain/trivia/trivia";
 
-export { TriviaEditor };
 export type { EditorMode };
+export { TriviaEditor };
 
 type EditorMode =
   | { readonly type: "create"; readonly askAuthorName: boolean }
@@ -114,7 +114,12 @@ function TriviaEditor({ mode, initial }: { mode: EditorMode; initial: TriviaForm
         {mode.type === "create" && mode.askAuthorName ? (
           <label className="block space-y-1">
             <span className="text-sm font-medium text-slate-700">Seu nome (aparece como autor)</span>
-            <input className={inputClass} value={authorName} maxLength={40} onChange={(e) => setAuthorName(e.target.value)} />
+            <input
+              className={inputClass}
+              value={authorName}
+              maxLength={40}
+              onChange={(e) => setAuthorName(e.target.value)}
+            />
           </label>
         ) : null}
       </section>
@@ -201,7 +206,11 @@ function TriviaEditor({ mode, initial }: { mode: EditorMode; initial: TriviaForm
           disabled={status.type === "saving"}
           className="rounded-lg bg-indigo-600 px-5 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
         >
-          {status.type === "saving" ? "Salvando…" : mode.type === "create" ? "Salvar e gerar link" : "Salvar alterações"}
+          {status.type === "saving"
+            ? "Salvando…"
+            : mode.type === "create"
+              ? "Salvar e gerar link"
+              : "Salvar alterações"}
         </button>
       </div>
 

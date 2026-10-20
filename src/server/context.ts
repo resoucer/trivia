@@ -6,8 +6,8 @@ import { readSessionToken } from "@/infra/auth/cookies";
 import { getDb } from "@/infra/db/client";
 import type { Db } from "@/infra/db/db";
 
-export { requestContext };
 export type { RequestContext };
+export { requestContext };
 
 type RequestContext = { readonly db: Db; readonly viewer: Viewer; readonly now: Date };
 

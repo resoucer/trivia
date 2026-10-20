@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { signupUseCase, loginUseCase } from "@/application/authService";
+import { loginUseCase, signupUseCase } from "@/application/authService";
 import {
   cleanupExpiredUseCase,
   createTriviaUseCase,
@@ -20,19 +20,33 @@ async function freshDb(): Promise<Db> {
 }
 
 async function signup(db: Db, email: string): Promise<Viewer> {
-  const session = (await signupUseCase(db, { email, password: "segredo123", displayName: "Fulano" }, NOW))._unsafeUnwrap();
+  const session = (
+    await signupUseCase(db, { email, password: "segredo123", displayName: "Fulano" }, NOW)
+  )._unsafeUnwrap();
   return { type: "user", user: session.user };
 }
 
 describe("fluxo de trivias (SQLite em memória)", () => {
   it("anônima: cria com token de reivindicação, joga, fica fora do ranking e expira", async () => {
     const db = await freshDb();
-    const created = (await createTriviaUseCase(db, { type: "anonymous" }, { ...draftInput, authorName: "Ana" }, NOW))._unsafeUnwrap();
+    const created = (
+      await createTriviaUseCase(db, { type: "anonymous" }, { ...draftInput, authorName: "Ana" }, NOW)
+    )._unsafeUnwrap();
     expect(created.claimToken.type).toBe("just");
     const id = created.trivia.id.value;
 
     const played = (
-      await playTriviaUseCase(db, id, { answers: [{ questionId: "q1", choiceId: "c2" }, { questionId: "q2", choiceId: "c1" }] }, NOW)
+      await playTriviaUseCase(
+        db,
+        id,
+        {
+          answers: [
+            { questionId: "q1", choiceId: "c2" },
+            { questionId: "q2", choiceId: "c1" },
+          ],
+        },
+        NOW,
+      )
     )._unsafeUnwrap();
     expect(played.score.correctCount).toBe(2);
     expect((await loadTrivia(db, id, NOW))._unsafeUnwrap().playCount).toBe(1);
@@ -72,7 +86,9 @@ describe("fluxo de trivias (SQLite em memória)", () => {
     expect((await rankingUseCase(db, 10))._unsafeUnwrap().map((r) => r.trivia.id.value)).toEqual([id]);
     const edit = { ...draftInput, title: "Editada" };
     expect((await editTriviaUseCase(db, other, id, edit, NOW))._unsafeUnwrapErr()).toEqual({ type: "forbidden" });
-    expect((await editTriviaUseCase(db, { type: "anonymous" }, id, edit, NOW))._unsafeUnwrapErr()).toEqual({ type: "unauthenticated" });
+    expect((await editTriviaUseCase(db, { type: "anonymous" }, id, edit, NOW))._unsafeUnwrapErr()).toEqual({
+      type: "unauthenticated",
+    });
     expect((await editTriviaUseCase(db, owner, id, edit, NOW))._unsafeUnwrap().title).toBe("Editada");
   });
 

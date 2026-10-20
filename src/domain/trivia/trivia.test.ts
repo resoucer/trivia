@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ChoiceId, QuestionId } from "@/domain/trivia/ids";
 import { editTrivia, encodeTrivia, schema_Trivia, schema_TriviaDraft, touchTrivia } from "@/domain/trivia/trivia";
-import { draftInput, NOW, ownedTrivia, alice, validDraft } from "@/test/fixtures";
+import { alice, draftInput, NOW, ownedTrivia, validDraft } from "@/test/fixtures";
 
 describe("schema_TriviaDraft", () => {
   it("aceita um rascunho válido e normaliza descrição vazia para Nothing", () => {
@@ -20,7 +20,12 @@ describe("schema_TriviaDraft", () => {
   });
 
   it("rejeita alternativas repetidas e trivia sem perguntas", () => {
-    expect(schema_TriviaDraft.safeParse({ ...draftInput, questions: [{ prompt: "?", choices: ["a", "A"], correctChoiceIndex: 0 }] }).success).toBe(false);
+    expect(
+      schema_TriviaDraft.safeParse({
+        ...draftInput,
+        questions: [{ prompt: "?", choices: ["a", "A"], correctChoiceIndex: 0 }],
+      }).success,
+    ).toBe(false);
     expect(schema_TriviaDraft.safeParse({ ...draftInput, questions: [] }).success).toBe(false);
   });
 });

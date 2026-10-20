@@ -9,7 +9,9 @@ const outcome = await openDb(process.env["DATABASE_URL"] ?? "file:data/trivia.db
 
 outcome.match(
   (ids) => {
-    console.log(`Limpeza concluída: ${ids.length} trivia(s) anônima(s) com mais de ${ANONYMOUS_TTL_DAYS} dias sem atividade removida(s).`);
+    console.log(
+      `Limpeza concluída: ${ids.length} trivia(s) anônima(s) com mais de ${ANONYMOUS_TTL_DAYS} dias sem atividade removida(s).`,
+    );
     ids.forEach((id) => console.log(`  - ${id.value}`));
   },
   (error) => {
