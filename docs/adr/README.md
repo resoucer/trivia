@@ -13,3 +13,4 @@ Para criar um novo ADR: copie [0000-template.md](0000-template.md) para o próxi
 | [0004](0004-zod-como-base-de-schemas.md) | Zod como base de todos os schemas | Aceito |
 | [0005](0005-tratamento-de-erros-com-result.md) | Erros esperados como valores com `Result` (neverthrow) | Aceito |
 | [0006](0006-sqlite-drizzle-libsql.md) | SQLite (libSQL) com Drizzle ORM, com caminho para Postgres | Aceito |
+| [0007](0007-autenticacao-opcional.md) | Autenticação opcional com e-mail e senha e sessões em cookie | Aceito |
