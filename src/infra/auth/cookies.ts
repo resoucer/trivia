@@ -1,21 +1,30 @@
 import { ResultAsync } from "neverthrow";
 import { cookies } from "next/headers";
 import type { TriviaId } from "@/domain/trivia/ids";
-import { fromNullable, type Maybe } from "@/lib/maybe";
+import { VisitorId } from "@/domain/visitor/visitor";
+import { fromNullable, Just, type Maybe, Nothing } from "@/lib/maybe";
+import { parseWith } from "@/lib/validation";
 
 export {
   clearClaimToken,
   clearSessionToken,
   readClaimToken,
   readSessionToken,
+  readVisitorId,
   SESSION_TTL_DAYS,
+  VISITOR_COOKIE,
+  visitorCookieOptions,
   writeClaimToken,
   writeSessionToken,
+  writeVisitorId,
 };
 
 const SESSION_COOKIE = "trivia_session";
 const SESSION_TTL_DAYS = 30;
 const CLAIM_TTL_DAYS = 30;
+const VISITOR_COOKIE = "trivia_visitor";
+/** Browsers cap cookie lifetime at about 400 days. */
+const VISITOR_TTL_DAYS = 365;
 const DAY_SECONDS = 24 * 60 * 60;
 
 function claimCookieName(id: TriviaId): string {
@@ -28,6 +37,9 @@ const baseOptions = {
   path: "/",
   secure: process.env.NODE_ENV === "production",
 } as const;
+
+/** Long-lived, httpOnly: only identifies the browser for play dedup, never authenticates. */
+const visitorCookieOptions = { ...baseOptions, maxAge: VISITOR_TTL_DAYS * DAY_SECONDS } as const;
 
 function readCookie(name: string): ResultAsync<Maybe<string>, never> {
   return ResultAsync.fromSafePromise(cookies()).map((store) => fromNullable(store.get(name)?.value));
@@ -69,4 +81,21 @@ function writeClaimToken(id: TriviaId, token: string): ResultAsync<null, never> 
 
 function clearClaimToken(id: TriviaId): ResultAsync<null, never> {
   return deleteCookie(claimCookieName(id));
+}
+
+/** A malformed cookie is treated as absent (a fresh one is issued). */
+function readVisitorId(): ResultAsync<Maybe<VisitorId>, never> {
+  return readCookie(VISITOR_COOKIE).map(
+    (raw): Maybe<VisitorId> =>
+      raw.type === "just"
+        ? parseWith(VisitorId.schema, raw.value).match(
+            (id): Maybe<VisitorId> => Just(id),
+            (): Maybe<VisitorId> => Nothing(),
+          )
+        : Nothing(),
+  );
+}
+
+function writeVisitorId(id: VisitorId): ResultAsync<null, never> {
+  return writeCookie(VISITOR_COOKIE, id.value, visitorCookieOptions.maxAge);
 }
