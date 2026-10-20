@@ -1,0 +1,27 @@
+# dependências e build
+node_modules
+.next
+out
+coverage
+next-env.d.ts
+*.tsbuildinfo
+.vercel
+
+# banco SQLite local
+data/*
+!data/.gitkeep
+*.db
+*.db-*
+*.sqlite
+*.sqlite3
+
+# segredos
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+
+# sistema
+.DS_Store
+*.log
