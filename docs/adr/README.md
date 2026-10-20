@@ -19,3 +19,4 @@ Para criar um novo ADR: copie [0000-template.md](0000-template.md) para o próxi
 | [0010](0010-elegibilidade-do-ranking.md) | Ranking: só trivias de conta, ordenadas por número de partidas | Aceito |
 | [0011](0011-links-de-compartilhamento.md) | Links de compartilhamento pelo id público da trivia | Aceito |
 | [0012](0012-reivindicacao-de-trivia-anonima.md) | Reivindicar uma trivia anônima com token em cookie | Aceito |
+| [0013](0013-camadas-dominio-aplicacao-infra.md) | Camadas: domínio puro, aplicação, infraestrutura e borda web | Aceito |
