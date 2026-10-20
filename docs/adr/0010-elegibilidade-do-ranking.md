@@ -1,6 +1,6 @@
 # 0010. Ranking: só trivias de conta, ordenadas por número de partidas
 
-- **Status:** Aceito
+- **Status:** Aceito (contagem deduplicada por pessoa e dia desde [0016](0016-contagem-unica-de-partidas.md))
 - **Data:** 2026-10-19
 - **Decisores:** Fabricio Carvalho
 
