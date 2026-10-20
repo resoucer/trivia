@@ -1,21 +1,27 @@
 import type { Result } from "neverthrow";
 import type { AppError } from "@/application/appError";
-import { cleanupExpiredUseCase } from "@/application/triviaService";
-import type { TriviaId } from "@/domain/trivia/ids";
+import { type CleanupReport, cleanupUseCase } from "@/application/cleanupService";
 import { ANONYMOUS_TTL_DAYS } from "@/domain/trivia/lifecycle";
+import { PLAY_DEDUP_RETENTION_DAYS } from "@/domain/trivia/playDay";
 import { databaseUrl, openDb } from "@/infra/db/client";
 
-/** `npm run cleanup`: deletes anonymous trivias inactive for more than ANONYMOUS_TTL_DAYS. Meant for cron. */
-const outcome: Result<ReadonlyArray<TriviaId>, AppError> = await openDb(databaseUrl()).andThen((db) =>
-  cleanupExpiredUseCase(db, new Date()),
+/**
+ * `npm run cleanup` (meant for a daily cron): deletes anonymous trivias inactive for more than
+ * ANONYMOUS_TTL_DAYS and play dedup rows older than PLAY_DEDUP_RETENTION_DAYS.
+ */
+const outcome: Result<CleanupReport, AppError> = await openDb(databaseUrl()).andThen((db) =>
+  cleanupUseCase(db, new Date()),
 );
 
 outcome.match(
-  (ids) => {
+  (report) => {
     console.log(
-      `Limpeza concluída: ${ids.length} trivia(s) anônima(s) com mais de ${ANONYMOUS_TTL_DAYS} dias sem atividade removida(s).`,
+      `Limpeza concluída: ${report.expiredTrivias.length} trivia(s) anônima(s) com mais de ${ANONYMOUS_TTL_DAYS} dias sem atividade removida(s).`,
     );
-    for (const id of ids) console.log(`  - ${id.value}`);
+    for (const id of report.expiredTrivias) console.log(`  - ${id.value}`);
+    console.log(
+      `${report.prunedPlayDedupRows} registro(s) de contagem única com mais de ${PLAY_DEDUP_RETENTION_DAYS} dias removido(s).`,
+    );
   },
   (error) => {
     console.error("Falha na limpeza:", error);

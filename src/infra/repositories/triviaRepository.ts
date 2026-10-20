@@ -3,6 +3,7 @@ import { errAsync, okAsync, ResultAsync } from "neverthrow";
 import { z } from "zod";
 import { TriviaId, type UserId } from "@/domain/trivia/ids";
 import type { Play, PlayCounting, UniquePlaySlot } from "@/domain/trivia/play";
+import type { PlayDay } from "@/domain/trivia/playDay";
 import {
   encodeTrivia,
   schema_Question,
@@ -22,6 +23,7 @@ export type { RecordedPlay };
 export {
   claimTriviaRecord,
   deleteAnonymousInactiveBefore,
+  deletePlayDedupBefore,
   deleteTrivia,
   findClaimTokenHash,
   findTrivia,
@@ -176,6 +178,13 @@ function recordPlay(db: Db, play: Play, slot: UniquePlaySlot): ResultAsync<Recor
       counting: claimed.length > 0 ? { type: "counted" } : { type: "already-counted-today" },
       playCount: counter[0]?.playCount ?? 0,
     }),
+  );
+}
+
+/** Dedup rows only matter for the current day; older ones are dropped by the cleanup job. */
+function deletePlayDedupBefore(db: Db, cutoff: PlayDay): ResultAsync<number, DbError> {
+  return ResultAsync.fromPromise(db.delete(playDedup).where(lt(playDedup.day, cutoff.value)), dbFailure).map(
+    (result): number => result.rowsAffected,
   );
 }
 
