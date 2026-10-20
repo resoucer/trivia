@@ -1,4 +1,3 @@
-import { sql } from "drizzle-orm";
 import { okAsync, ResultAsync } from "neverthrow";
 import { TriviaId, UserId } from "@/domain/trivia/ids";
 import { anonymousOwner, userOwner } from "@/domain/trivia/owner";
@@ -7,13 +6,12 @@ import { DisplayName } from "@/domain/user/displayName";
 import { Email, type User } from "@/domain/user/user";
 import { hashPassword } from "@/infra/auth/password";
 import type { Db } from "@/infra/db/db";
-import { type DbError, dbFailure } from "@/infra/db/dbError";
-import { users } from "@/infra/db/tables";
-import { insertTrivia } from "@/infra/repositories/triviaRepository";
-import { insertUserWithPassword } from "@/infra/repositories/userRepository";
+import type { DbError } from "@/infra/db/dbError";
+import { findTrivia, insertTrivia } from "@/infra/repositories/triviaRepository";
+import { findUserWithPasswordByEmail, insertUserWithPassword } from "@/infra/repositories/userRepository";
 import { Just, Nothing } from "@/lib/maybe";
 
-export { SEED_DEMO_USER, seedIfEmpty };
+export { SEED_DEMO_USER, seedDefaults };
 
 const SEED_DEMO_USER = { email: "demo@trivia.local", password: "trivia1234", displayName: "Equipe Trivia" } as const;
 
@@ -102,35 +100,49 @@ function seedTrivia(seed: SeedTrivia, creator: Creator, now: Date): Trivia {
   return { ...createTrivia(seed.draft, creator, new TriviaId(seed.id), now), playCount: seed.playCount };
 }
 
-function seedData(db: Db, now: Date): ResultAsync<null, DbError> {
-  const demo: User = {
-    id: new UserId("seed-demo-user"),
-    email: new Email(SEED_DEMO_USER.email),
-    displayName: new DisplayName(SEED_DEMO_USER.displayName),
-  };
-  const owner: Creator = { owner: userOwner(demo.id), displayName: demo.displayName };
-  const anonymous: Creator = { owner: anonymousOwner(), displayName: new DisplayName("Visitante") };
-  return hashPassword(SEED_DEMO_USER.password)
-    .mapErr((e): DbError => ({ type: "db-failure", message: `seed hash: ${e.type}` }))
-    .andThen((hash) =>
-      insertUserWithPassword(db, demo, hash, now).mapErr(
-        (e): DbError => (e.type === "email-taken" ? { type: "db-failure", message: "seed user exists" } : e),
-      ),
-    )
-    .andThen(() =>
-      ResultAsync.combine([
-        ...ownedSeeds.map((seed, i) =>
-          insertTrivia(db, seedTrivia(seed, owner, new Date(now.getTime() - i * 60_000)), Nothing()),
-        ),
-        insertTrivia(db, seedTrivia(anonymousSeed, anonymous, now), Nothing()),
-      ]),
-    )
-    .map((): null => null);
+/** Returns the demo user, creating it (with its password) only when its e-mail is not registered yet. */
+function ensureDemoUser(db: Db, now: Date): ResultAsync<User, DbError> {
+  return findUserWithPasswordByEmail(db, new Email(SEED_DEMO_USER.email)).andThen(
+    (found): ResultAsync<User, DbError> => {
+      if (found.type === "just") return okAsync(found.value.user);
+      const demo: User = {
+        id: new UserId("seed-demo-user"),
+        email: new Email(SEED_DEMO_USER.email),
+        displayName: new DisplayName(SEED_DEMO_USER.displayName),
+      };
+      return hashPassword(SEED_DEMO_USER.password)
+        .mapErr((e): DbError => ({ type: "db-failure", message: `seed hash: ${e.type}` }))
+        .andThen((hash) =>
+          insertUserWithPassword(db, demo, hash, now).mapErr(
+            (e): DbError => (e.type === "email-taken" ? { type: "db-failure", message: "seed user exists" } : e),
+          ),
+        );
+    },
+  );
 }
 
-/** Seeds a demo user and example trivias when the database has no users yet. */
-function seedIfEmpty(db: Db, now: Date): ResultAsync<null, DbError> {
-  return ResultAsync.fromPromise(db.select({ n: sql<number>`count(*)` }).from(users), dbFailure).andThen((rows) =>
-    (rows[0]?.n ?? 0) > 0 ? okAsync(null) : seedData(db, now),
+/** Inserts the trivia unless one with the same id exists. Resolves to whether it was inserted. */
+function insertIfMissing(db: Db, trivia: Trivia): ResultAsync<boolean, DbError> {
+  return findTrivia(db, trivia.id).andThen(
+    (found): ResultAsync<boolean, DbError> =>
+      found.type === "just" ? okAsync(false) : insertTrivia(db, trivia, Nothing()).map((): boolean => true),
   );
+}
+
+/**
+ * Idempotent: creates the demo user and each seed trivia only if missing, so it can run on every
+ * startup and on databases seeded by older versions. Resolves to how many trivias were inserted.
+ */
+function seedDefaults(db: Db, now: Date): ResultAsync<number, DbError> {
+  return ensureDemoUser(db, now).andThen((demo) => {
+    const owner: Creator = { owner: userOwner(demo.id), displayName: demo.displayName };
+    const anonymous: Creator = { owner: anonymousOwner(), displayName: new DisplayName("Visitante") };
+    const trivias: ReadonlyArray<Trivia> = [
+      ...ownedSeeds.map((seed, i) => seedTrivia(seed, owner, new Date(now.getTime() - i * 60_000))),
+      seedTrivia(anonymousSeed, anonymous, now),
+    ];
+    return ResultAsync.combine(trivias.map((t) => insertIfMissing(db, t))).map(
+      (inserted): number => inserted.filter((wasInserted) => wasInserted).length,
+    );
+  });
 }

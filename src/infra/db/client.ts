@@ -5,7 +5,7 @@ import { migrate } from "drizzle-orm/libsql/migrator";
 import { errAsync, ResultAsync } from "neverthrow";
 import type { Db } from "@/infra/db/db";
 import { type DbError, dbFailure } from "@/infra/db/dbError";
-import { seedIfEmpty } from "@/infra/db/seed";
+import { seedDefaults } from "@/infra/db/seed";
 import * as tables from "@/infra/db/tables";
 
 export { DEFAULT_DATABASE_URL, databaseUrl, getDb, migrateDb, openDb };
@@ -50,7 +50,7 @@ function getDb(): ResultAsync<Db, DbError> {
   const cached = globalForDb.__triviaDb;
   if (cached !== undefined) return cached;
   const opened = openAppDb(databaseUrl())
-    .andThen((db) => seedIfEmpty(db, new Date()).map((): Db => db))
+    .andThen((db) => seedDefaults(db, new Date()).map((): Db => db))
     .orElse((error) => {
       // Do not cache failures: the next request retries.
       delete globalForDb.__triviaDb;
