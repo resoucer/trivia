@@ -2,22 +2,14 @@ import { err, ok, type Result } from "neverthrow";
 import { isOwnedBy, userOwner } from "@/domain/trivia/owner";
 import type { Trivia } from "@/domain/trivia/trivia";
 import type { User, Viewer } from "@/domain/user/user";
-import { Just, Nothing, type Maybe } from "@/lib/maybe";
+import { Just, type Maybe, Nothing } from "@/lib/maybe";
 
-export {
-  ANONYMOUS_TTL_DAYS,
-  expirationCutoff,
-  expiresAt,
-  isExpired,
-  isListedPublicly,
-  canEditTrivia,
-  claimTrivia,
-};
 export type { ClaimError };
+export { ANONYMOUS_TTL_DAYS, canEditTrivia, claimTrivia, expirationCutoff, expiresAt, isExpired, isListedPublicly };
 
 const ANONYMOUS_TTL_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const ANONYMOUS_TTL_MS = ANONYMOUS_TTL_DAYS * DAY_MS;
+const ANONYMOUS_TTL_MS: number = ANONYMOUS_TTL_DAYS * DAY_MS;
 
 /** Anonymous trivias whose last activity is strictly before this instant are expired. */
 function expirationCutoff(now: Date): Date {

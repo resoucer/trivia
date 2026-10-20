@@ -1,8 +1,9 @@
 import { and, desc, eq, inArray, lt, sql } from "drizzle-orm";
-import { ResultAsync, errAsync, okAsync } from "neverthrow";
+import { errAsync, okAsync, ResultAsync } from "neverthrow";
 import { z } from "zod";
-import type { Play } from "@/domain/trivia/play";
 import { TriviaId, type UserId } from "@/domain/trivia/ids";
+import type { Play, PlayCounting, UniquePlaySlot } from "@/domain/trivia/play";
+import type { PlayDay } from "@/domain/trivia/playDay";
 import {
   encodeTrivia,
   schema_Question,
@@ -12,24 +13,26 @@ import {
   type TriviaSummary,
 } from "@/domain/trivia/trivia";
 import type { Db } from "@/infra/db/db";
-import { corruptData, dbFailure, type DbError } from "@/infra/db/dbError";
-import { plays, triviaClaims, trivias } from "@/infra/db/tables";
+import { corruptData, type DbError, dbFailure } from "@/infra/db/dbError";
+import { playDedup, plays, triviaClaims, trivias } from "@/infra/db/tables";
 import { jsonString } from "@/lib/json";
-import { Just, Nothing, type Maybe } from "@/lib/maybe";
+import { Just, type Maybe, Nothing } from "@/lib/maybe";
 import { parseWith } from "@/lib/validation";
 
+export type { RecordedPlay };
 export {
-  PublicListOrder,
-  insertTrivia,
+  claimTriviaRecord,
+  deleteAnonymousInactiveBefore,
+  deletePlayDedupBefore,
+  deleteTrivia,
+  findClaimTokenHash,
   findTrivia,
-  saveTrivia,
-  recordPlay,
+  insertTrivia,
   listPublicTrivias,
   listTriviasOwnedBy,
-  deleteTrivia,
-  deleteAnonymousInactiveBefore,
-  findClaimTokenHash,
-  claimTriviaRecord,
+  PublicListOrder,
+  recordPlay,
+  saveTrivia,
 };
 
 const PublicListOrder = { Popular: "popular", Recent: "recent" } as const;
@@ -87,19 +90,21 @@ function insertTrivia(db: Db, trivia: Trivia, claimTokenHash: Maybe<string>): Re
   const insert = db.insert(trivias).values(toRow(trivia));
   const run: Promise<unknown> =
     claimTokenHash.type === "just"
-      ? db.batch([insert, db.insert(triviaClaims).values({ triviaId: trivia.id.value, tokenHash: claimTokenHash.value })])
+      ? db.batch([
+          insert,
+          db.insert(triviaClaims).values({ triviaId: trivia.id.value, tokenHash: claimTokenHash.value }),
+        ])
       : insert.then((r) => r);
   return ResultAsync.fromPromise(run, dbFailure).map((): Trivia => trivia);
 }
 
 function findTrivia(db: Db, id: TriviaId): ResultAsync<Maybe<Trivia>, DbError> {
-  return ResultAsync.fromPromise(
-    db.select().from(trivias).where(eq(trivias.id, id.value)).limit(1),
-    dbFailure,
-  ).andThen((rows) => {
-    const row = rows[0];
-    return row === undefined ? okAsync(Nothing<Trivia>()) : decodeRow(row).map((t) => Just(t));
-  });
+  return ResultAsync.fromPromise(db.select().from(trivias).where(eq(trivias.id, id.value)).limit(1), dbFailure).andThen(
+    (rows) => {
+      const row = rows[0];
+      return row === undefined ? okAsync(Nothing<Trivia>()) : decodeRow(row).map((t) => Just(t));
+    },
+  );
 }
 
 /** Persists content, ownership and timestamps of an existing trivia (counters are left to `recordPlay`). */
@@ -123,8 +128,22 @@ function saveTrivia(db: Db, trivia: Trivia): ResultAsync<Trivia, DbError> {
   ).map((): Trivia => trivia);
 }
 
-/** Stores a play and atomically increments the play count / activity of its trivia. */
-function recordPlay(db: Db, play: Play): ResultAsync<Play, DbError> {
+/** What happened to the counter: decided inside the batch, so concurrent plays cannot double count. */
+type RecordedPlay = { readonly counting: PlayCounting; readonly playCount: number };
+
+/**
+ * Stores a play and, in one atomic batch:
+ * 1. tries to claim the (trivia, visitor, day) slot with this play's id (`ON CONFLICT DO NOTHING`);
+ * 2. increments the play count only if the slot now holds this play's id (i.e. the insert happened);
+ * 3. always refreshes the activity timestamp (replays keep anonymous trivias alive).
+ */
+function recordPlay(db: Db, play: Play, slot: UniquePlaySlot): ResultAsync<RecordedPlay, DbError> {
+  const slotIsThisPlay = and(
+    eq(playDedup.triviaId, slot.triviaId.value),
+    eq(playDedup.visitorKey, slot.visitorKey.value),
+    eq(playDedup.day, slot.day.value),
+    eq(playDedup.playId, play.id.value),
+  );
   return ResultAsync.fromPromise(
     db.batch([
       db.insert(plays).values({
@@ -135,12 +154,38 @@ function recordPlay(db: Db, play: Play): ResultAsync<Play, DbError> {
         playedAt: play.playedAt.toISOString(),
       }),
       db
+        .insert(playDedup)
+        .values({
+          triviaId: slot.triviaId.value,
+          visitorKey: slot.visitorKey.value,
+          day: slot.day.value,
+          playId: play.id.value,
+        })
+        .onConflictDoNothing(),
+      db
         .update(trivias)
-        .set({ playCount: sql`${trivias.playCount} + 1`, lastActivityAt: play.playedAt.toISOString() })
+        .set({
+          playCount: sql`${trivias.playCount} + (SELECT count(*) FROM ${playDedup} WHERE ${slotIsThisPlay})`,
+          lastActivityAt: play.playedAt.toISOString(),
+        })
         .where(eq(trivias.id, play.triviaId.value)),
+      db.select({ playCount: trivias.playCount }).from(trivias).where(eq(trivias.id, play.triviaId.value)),
+      db.select({ playId: playDedup.playId }).from(playDedup).where(slotIsThisPlay),
     ]),
     dbFailure,
-  ).map((): Play => play);
+  ).map(
+    ([, , , counter, claimed]): RecordedPlay => ({
+      counting: claimed.length > 0 ? { type: "counted" } : { type: "already-counted-today" },
+      playCount: counter[0]?.playCount ?? 0,
+    }),
+  );
+}
+
+/** Dedup rows only matter for the current day; older ones are dropped by the cleanup job. */
+function deletePlayDedupBefore(db: Db, cutoff: PlayDay): ResultAsync<number, DbError> {
+  return ResultAsync.fromPromise(db.delete(playDedup).where(lt(playDedup.day, cutoff.value)), dbFailure).map(
+    (result): number => result.rowsAffected,
+  );
 }
 
 function orderColumns(order: PublicListOrder): ReadonlyArray<ReturnType<typeof desc>> {
@@ -192,6 +237,7 @@ function deleteTrivia(db: Db, id: TriviaId): ResultAsync<null, DbError> {
   return ResultAsync.fromPromise(
     db.batch([
       db.delete(plays).where(eq(plays.triviaId, id.value)),
+      db.delete(playDedup).where(eq(playDedup.triviaId, id.value)),
       db.delete(triviaClaims).where(eq(triviaClaims.triviaId, id.value)),
       db.delete(trivias).where(eq(trivias.id, id.value)),
     ]),
@@ -212,6 +258,7 @@ function deleteAnonymousInactiveBefore(db: Db, cutoff: Date): ResultAsync<Readon
       return ResultAsync.fromPromise(
         db.batch([
           db.delete(plays).where(inArray(plays.triviaId, ids)),
+          db.delete(playDedup).where(inArray(playDedup.triviaId, ids)),
           db.delete(triviaClaims).where(inArray(triviaClaims.triviaId, ids)),
           db.delete(trivias).where(and(inArray(trivias.id, ids), expired)),
         ]),
@@ -223,7 +270,11 @@ function deleteAnonymousInactiveBefore(db: Db, cutoff: Date): ResultAsync<Readon
 
 function findClaimTokenHash(db: Db, id: TriviaId): ResultAsync<Maybe<string>, DbError> {
   return ResultAsync.fromPromise(
-    db.select({ tokenHash: triviaClaims.tokenHash }).from(triviaClaims).where(eq(triviaClaims.triviaId, id.value)).limit(1),
+    db
+      .select({ tokenHash: triviaClaims.tokenHash })
+      .from(triviaClaims)
+      .where(eq(triviaClaims.triviaId, id.value))
+      .limit(1),
     dbFailure,
   ).map((rows): Maybe<string> => {
     const row = rows[0];

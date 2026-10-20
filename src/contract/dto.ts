@@ -1,37 +1,38 @@
 import { z } from "zod";
+import { isCounted, type PlayCounting } from "@/domain/trivia/play";
 import type { RankedTrivia } from "@/domain/trivia/ranking";
 import type { Score } from "@/domain/trivia/scoring";
 import type { PublicTrivia, Trivia, TriviaSummary } from "@/domain/trivia/trivia";
 import type { Viewer } from "@/domain/user/user";
-import { toNullable, mapMaybe } from "@/lib/maybe";
+import { mapMaybe, toNullable } from "@/lib/maybe";
 
-export {
-  schema_TriviaSummaryDto,
-  schema_RankedTriviaDto,
-  schema_PublicTriviaDto,
-  schema_PlayResultDto,
-  schema_CreatedTriviaDto,
-  schema_ErrorDto,
-  schema_ViewerDto,
-  schema_TriviaFormDto,
-  encodeSummary,
-  encodeRanked,
-  encodePublicTrivia,
-  encodePlayResult,
-  encodeViewer,
-  encodeTriviaForm,
-  emptyQuestionForm,
-  sharePath,
-};
 export type {
-  TriviaSummaryDto,
-  RankedTriviaDto,
-  PublicTriviaDto,
-  PlayResultDto,
   CreatedTriviaDto,
   ErrorDto,
-  ViewerDto,
+  PlayResultDto,
+  PublicTriviaDto,
+  RankedTriviaDto,
   TriviaFormDto,
+  TriviaSummaryDto,
+  ViewerDto,
+};
+export {
+  emptyQuestionForm,
+  encodePlayResult,
+  encodePublicTrivia,
+  encodeRanked,
+  encodeSummary,
+  encodeTriviaForm,
+  encodeViewer,
+  schema_CreatedTriviaDto,
+  schema_ErrorDto,
+  schema_PlayResultDto,
+  schema_PublicTriviaDto,
+  schema_RankedTriviaDto,
+  schema_TriviaFormDto,
+  schema_TriviaSummaryDto,
+  schema_ViewerDto,
+  sharePath,
 };
 
 /*
@@ -72,6 +73,8 @@ const schema_PlayResultDto = z.object({
   correctCount: z.number().int(),
   totalCount: z.number().int(),
   playCount: z.number().int(),
+  /** false when this visitor already had a play counted for this trivia today (score is still returned). */
+  counted: z.boolean(),
   results: z.array(
     z.object({
       questionId: z.string(),
@@ -156,11 +159,12 @@ function encodePublicTrivia(t: PublicTrivia): PublicTriviaDto {
   };
 }
 
-function encodePlayResult(score: Score, playCount: number): PlayResultDto {
+function encodePlayResult(score: Score, playCount: number, counting: PlayCounting): PlayResultDto {
   return {
     correctCount: score.correctCount,
     totalCount: score.totalCount,
     playCount,
+    counted: isCounted(counting),
     results: score.results.map((r) => ({
       questionId: r.questionId.value,
       chosenChoiceId: r.chosenChoiceId.value,

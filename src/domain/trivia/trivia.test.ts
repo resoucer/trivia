@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { ChoiceId, QuestionId } from "@/domain/trivia/ids";
 import { editTrivia, encodeTrivia, schema_Trivia, schema_TriviaDraft, touchTrivia } from "@/domain/trivia/trivia";
-import { draftInput, NOW, ownedTrivia, alice, validDraft } from "@/test/fixtures";
+import { alice, draftInput, NOW, ownedTrivia, validDraft } from "@/test/fixtures";
 
 describe("schema_TriviaDraft", () => {
   it("aceita um rascunho válido e normaliza descrição vazia para Nothing", () => {
@@ -20,7 +20,12 @@ describe("schema_TriviaDraft", () => {
   });
 
   it("rejeita alternativas repetidas e trivia sem perguntas", () => {
-    expect(schema_TriviaDraft.safeParse({ ...draftInput, questions: [{ prompt: "?", choices: ["a", "A"], correctChoiceIndex: 0 }] }).success).toBe(false);
+    expect(
+      schema_TriviaDraft.safeParse({
+        ...draftInput,
+        questions: [{ prompt: "?", choices: ["a", "A"], correctChoiceIndex: 0 }],
+      }).success,
+    ).toBe(false);
     expect(schema_TriviaDraft.safeParse({ ...draftInput, questions: [] }).success).toBe(false);
   });
 });
@@ -52,10 +57,17 @@ describe("editTrivia / touchTrivia", () => {
     expect(trivia.title).toBe("Capitais");
   });
 
-  it("uma partida incrementa o contador e a atividade", () => {
+  it("uma partida contada incrementa o contador e a atividade", () => {
     const later = new Date(NOW.getTime() + 5000);
-    const touched = touchTrivia(ownedTrivia(alice, {}, "trivia-1"), later);
+    const touched = touchTrivia(ownedTrivia(alice, {}, "trivia-1"), { type: "counted" }, later);
     expect(touched.playCount).toBe(1);
+    expect(touched.lastActivityAt).toEqual(later);
+  });
+
+  it("uma partida repetida no dia só atualiza a atividade", () => {
+    const later = new Date(NOW.getTime() + 5000);
+    const touched = touchTrivia(ownedTrivia(alice, {}, "trivia-1"), { type: "already-counted-today" }, later);
+    expect(touched.playCount).toBe(0);
     expect(touched.lastActivityAt).toEqual(later);
   });
 });

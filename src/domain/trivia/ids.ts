@@ -1,6 +1,6 @@
 import { z } from "zod";
 
-export { TriviaId, QuestionId, ChoiceId, PlayId, UserId };
+export { ChoiceId, PlayId, QuestionId, TriviaId, UserId };
 
 const PUBLIC_ID_PATTERN = /^[A-Za-z0-9_-]{6,32}$/;
 const LOCAL_ID_PATTERN = /^[a-z][0-9]{1,3}$/;

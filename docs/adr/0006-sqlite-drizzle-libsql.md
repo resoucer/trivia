@@ -1,6 +1,6 @@
 # 0006. SQLite (libSQL) com Drizzle ORM, com caminho para Postgres
 
-- **Status:** Aceito
+- **Status:** Aceito (o DDL executado na abertura foi substituído por [0015](0015-migracoes-versionadas-drizzle-kit.md))
 - **Data:** 2026-10-19
 - **Decisores:** Fabricio Carvalho
 

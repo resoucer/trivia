@@ -3,8 +3,8 @@ import { z } from "zod";
 import { ChoiceId, QuestionId } from "@/domain/trivia/ids";
 import type { Trivia } from "@/domain/trivia/trivia";
 
-export { schema_Submission, scoreSubmission, Grade, gradeOf, gradeLabel };
-export type { Submission, Score, QuestionResult, ScoringError };
+export type { QuestionResult, Score, ScoringError, Submission };
+export { Grade, gradeLabel, gradeOf, schema_Submission, scoreSubmission };
 
 const schema_Submission = z.object({
   answers: z

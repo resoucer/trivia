@@ -1,10 +1,10 @@
-import { openDb } from "@/infra/db/client";
+import type { Result } from "neverthrow";
+import { databaseUrl, openDb } from "@/infra/db/client";
+import type { DbError } from "@/infra/db/dbError";
 import { SEED_DEMO_USER, seedIfEmpty } from "@/infra/db/seed";
 
 /** `npm run db:seed`: creates the schema and example data if the database is empty. */
-const outcome = await openDb(process.env["DATABASE_URL"] ?? "file:data/trivia.db").andThen((db) =>
-  seedIfEmpty(db, new Date()),
-);
+const outcome: Result<null, DbError> = await openDb(databaseUrl()).andThen((db) => seedIfEmpty(db, new Date()));
 
 outcome.match(
   () => console.log(`Banco pronto. Usuário de demonstração: ${SEED_DEMO_USER.email} / ${SEED_DEMO_USER.password}`),

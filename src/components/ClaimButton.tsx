@@ -2,20 +2,28 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { HttpMethod, requestJson, type ClientError } from "@/client/api";
+import { type ClientError, HttpMethod, requestJson } from "@/client/api";
 import { ErrorBox } from "@/components/ErrorBox";
 import { schema_PublicTriviaDto } from "@/contract/dto";
 
 export { ClaimButton };
 
-type ClaimState = { readonly type: "idle" } | { readonly type: "saving" } | { readonly type: "failed"; readonly error: ClientError };
+type ClaimState =
+  | { readonly type: "idle" }
+  | { readonly type: "saving" }
+  | { readonly type: "failed"; readonly error: ClientError };
 
 function ClaimButton({ triviaId }: { triviaId: string }) {
   const router = useRouter();
   const [state, setState] = useState<ClaimState>({ type: "idle" });
   const claim = (): void => {
     setState({ type: "saving" });
-    void requestJson(HttpMethod.Post, `/api/trivias/${encodeURIComponent(triviaId)}/claim`, null, schema_PublicTriviaDto).match(
+    void requestJson(
+      HttpMethod.Post,
+      `/api/trivias/${encodeURIComponent(triviaId)}/claim`,
+      null,
+      schema_PublicTriviaDto,
+    ).match(
       () => {
         setState({ type: "idle" });
         router.refresh();

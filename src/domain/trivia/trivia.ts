@@ -1,34 +1,35 @@
 import { z } from "zod";
-import { expiresAt } from "@/domain/trivia/lifecycle";
-import { encodeOwner, schema_Owner, type Owner } from "@/domain/trivia/owner";
-import { DisplayName } from "@/domain/user/displayName";
 import { ChoiceId, QuestionId, TriviaId } from "@/domain/trivia/ids";
-import { Just, Nothing, fromNullable, toNullable, type Maybe } from "@/lib/maybe";
+import { expiresAt } from "@/domain/trivia/lifecycle";
+import { encodeOwner, type Owner, schema_Owner } from "@/domain/trivia/owner";
+import { isCounted, type PlayCounting } from "@/domain/trivia/play";
+import { DisplayName } from "@/domain/user/displayName";
+import { fromNullable, Just, type Maybe, Nothing, toNullable } from "@/lib/maybe";
 
+export type {
+  Choice,
+  Creator,
+  PublicQuestion,
+  PublicTrivia,
+  Question,
+  QuestionDraft,
+  Trivia,
+  TriviaDraft,
+  TriviaEncoded,
+  TriviaSummary,
+};
 export {
-  TRIVIA_LIMITS,
-  schema_TriviaDraft,
-  schema_QuestionDraft,
-  schema_Question,
-  schema_Trivia,
   createTrivia,
   editTrivia,
-  touchTrivia,
   encodeTrivia,
+  schema_Question,
+  schema_QuestionDraft,
+  schema_Trivia,
+  schema_TriviaDraft,
   summarizeTrivia,
+  TRIVIA_LIMITS,
   toPublicTrivia,
-};
-export type {
-  TriviaDraft,
-  QuestionDraft,
-  Question,
-  Choice,
-  Trivia,
-  TriviaEncoded,
-  Creator,
-  TriviaSummary,
-  PublicTrivia,
-  PublicQuestion,
+  touchTrivia,
 };
 
 const TRIVIA_LIMITS = {
@@ -58,10 +59,16 @@ const schema_QuestionDraft = z
           .string({ error: "Informe a alternativa" })
           .trim()
           .min(1, { error: "A alternativa não pode ficar vazia" })
-          .max(TRIVIA_LIMITS.choiceMax, { error: `A alternativa pode ter no máximo ${TRIVIA_LIMITS.choiceMax} caracteres` }),
+          .max(TRIVIA_LIMITS.choiceMax, {
+            error: `A alternativa pode ter no máximo ${TRIVIA_LIMITS.choiceMax} caracteres`,
+          }),
       )
-      .min(TRIVIA_LIMITS.choicesMin, { error: `Cada pergunta precisa de pelo menos ${TRIVIA_LIMITS.choicesMin} alternativas` })
-      .max(TRIVIA_LIMITS.choicesMax, { error: `Cada pergunta pode ter no máximo ${TRIVIA_LIMITS.choicesMax} alternativas` })
+      .min(TRIVIA_LIMITS.choicesMin, {
+        error: `Cada pergunta precisa de pelo menos ${TRIVIA_LIMITS.choicesMin} alternativas`,
+      })
+      .max(TRIVIA_LIMITS.choicesMax, {
+        error: `Cada pergunta pode ter no máximo ${TRIVIA_LIMITS.choicesMax} alternativas`,
+      })
       .refine((choices) => new Set(choices.map((c) => c.toLocaleLowerCase("pt-BR"))).size === choices.length, {
         error: "As alternativas precisam ser diferentes entre si",
       }),
@@ -81,13 +88,17 @@ const schema_TriviaDraft = z.object({
   description: z
     .string()
     .trim()
-    .max(TRIVIA_LIMITS.descriptionMax, { error: `A descrição pode ter no máximo ${TRIVIA_LIMITS.descriptionMax} caracteres` })
+    .max(TRIVIA_LIMITS.descriptionMax, {
+      error: `A descrição pode ter no máximo ${TRIVIA_LIMITS.descriptionMax} caracteres`,
+    })
     .optional()
     .transform((d): Maybe<string> => (d === undefined || d.length === 0 ? Nothing() : Just(d))),
   questions: z
     .array(schema_QuestionDraft)
     .min(TRIVIA_LIMITS.questionsMin, { error: "Adicione pelo menos uma pergunta" })
-    .max(TRIVIA_LIMITS.questionsMax, { error: `Uma trivia pode ter no máximo ${TRIVIA_LIMITS.questionsMax} perguntas` }),
+    .max(TRIVIA_LIMITS.questionsMax, {
+      error: `Uma trivia pode ter no máximo ${TRIVIA_LIMITS.questionsMax} perguntas`,
+    }),
 });
 
 type QuestionDraft = z.infer<typeof schema_QuestionDraft>;
@@ -174,9 +185,9 @@ function editTrivia(trivia: Trivia, draft: TriviaDraft, now: Date): Trivia {
   };
 }
 
-/** Registers a play: bumps the play count and the activity timestamp. */
-function touchTrivia(trivia: Trivia, now: Date): Trivia {
-  return { ...trivia, playCount: trivia.playCount + 1, lastActivityAt: now };
+/** Registers a play: always refreshes activity, bumps the play count only if the play counted. */
+function touchTrivia(trivia: Trivia, counting: PlayCounting, now: Date): Trivia {
+  return { ...trivia, playCount: trivia.playCount + (isCounted(counting) ? 1 : 0), lastActivityAt: now };
 }
 
 function encodeTrivia(trivia: Trivia): TriviaEncoded {

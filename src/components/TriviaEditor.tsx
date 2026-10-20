@@ -2,13 +2,13 @@
 
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { HttpMethod, requestJson, type ClientError } from "@/client/api";
+import { type ClientError, HttpMethod, requestJson } from "@/client/api";
 import { ErrorBox } from "@/components/ErrorBox";
 import { emptyQuestionForm, schema_CreatedTriviaDto, schema_PublicTriviaDto, type TriviaFormDto } from "@/contract/dto";
 import { TRIVIA_LIMITS } from "@/domain/trivia/trivia";
 
-export { TriviaEditor };
 export type { EditorMode };
+export { TriviaEditor };
 
 type EditorMode =
   | { readonly type: "create"; readonly askAuthorName: boolean }
@@ -114,12 +114,18 @@ function TriviaEditor({ mode, initial }: { mode: EditorMode; initial: TriviaForm
         {mode.type === "create" && mode.askAuthorName ? (
           <label className="block space-y-1">
             <span className="text-sm font-medium text-slate-700">Seu nome (aparece como autor)</span>
-            <input className={inputClass} value={authorName} maxLength={40} onChange={(e) => setAuthorName(e.target.value)} />
+            <input
+              className={inputClass}
+              value={authorName}
+              maxLength={40}
+              onChange={(e) => setAuthorName(e.target.value)}
+            />
           </label>
         ) : null}
       </section>
 
       {form.questions.map((question, qi) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: questions have no id until saved; position is their identity
         <section key={qi} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-slate-800">Pergunta {qi + 1}</h2>
@@ -143,6 +149,7 @@ function TriviaEditor({ mode, initial }: { mode: EditorMode; initial: TriviaForm
           <fieldset className="space-y-2">
             <legend className="mb-1 text-sm text-slate-600">Alternativas: marque a correta</legend>
             {question.choices.map((choice, ci) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: choices have no id until saved; position is their identity
               <div key={ci} className="flex items-center gap-2">
                 <input
                   type="radio"
@@ -201,7 +208,11 @@ function TriviaEditor({ mode, initial }: { mode: EditorMode; initial: TriviaForm
           disabled={status.type === "saving"}
           className="rounded-lg bg-indigo-600 px-5 py-2 font-semibold text-white hover:bg-indigo-700 disabled:opacity-60"
         >
-          {status.type === "saving" ? "Salvando…" : mode.type === "create" ? "Salvar e gerar link" : "Salvar alterações"}
+          {status.type === "saving"
+            ? "Salvando…"
+            : mode.type === "create"
+              ? "Salvar e gerar link"
+              : "Salvar alterações"}
         </button>
       </div>
 

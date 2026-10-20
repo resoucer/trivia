@@ -1,6 +1,6 @@
+import { okAsync } from "neverthrow";
 import type { Metadata } from "next";
 import Link from "next/link";
-import { okAsync } from "neverthrow";
 import { loadTrivia } from "@/application/triviaService";
 import { ClaimButton } from "@/components/ClaimButton";
 import { Player } from "@/components/Player";
@@ -13,11 +13,11 @@ import { matchMaybe, Nothing } from "@/lib/maybe";
 import { requestContext } from "@/server/context";
 import { unwrapForPage } from "@/server/page";
 
-export { TriviaPage as default, generateMetadata };
+export { generateMetadata, TriviaPage as default };
 
 type Props = {
   readonly params: Promise<{ id: string }>;
-  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
+  readonly searchParams: Promise<Record<string, string | Array<string> | undefined>>;
 };
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "long", timeZone: "America/Sao_Paulo" });
@@ -34,15 +34,17 @@ async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 async function TriviaPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const justCreated = (await searchParams)["criada"] === "1";
+  const justCreated = (await searchParams).criada === "1";
   const { trivia, viewer, claimToken } = await unwrapForPage(
     requestContext().andThen((ctx) =>
       loadTrivia(ctx.db, id, ctx.now).andThen((trivia) =>
-        (trivia.owner.type === "anonymous" ? readClaimToken(trivia.id) : okAsync(Nothing<string>())).map((claimToken) => ({
-          trivia,
-          viewer: ctx.viewer,
-          claimToken,
-        })),
+        (trivia.owner.type === "anonymous" ? readClaimToken(trivia.id) : okAsync(Nothing<string>())).map(
+          (claimToken) => ({
+            trivia,
+            viewer: ctx.viewer,
+            claimToken,
+          }),
+        ),
       ),
     ),
     `/t/${id}`,

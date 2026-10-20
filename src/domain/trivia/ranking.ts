@@ -1,8 +1,8 @@
 import { isListedPublicly } from "@/domain/trivia/lifecycle";
 import type { TriviaSummary } from "@/domain/trivia/trivia";
 
-export { rankByPlays, recentFirst };
 export type { RankedTrivia };
+export { rankByPlays, recentFirst };
 
 type RankedTrivia = { readonly position: number; readonly trivia: TriviaSummary };
 
@@ -24,7 +24,5 @@ function rankByPlays(trivias: ReadonlyArray<TriviaSummary>): ReadonlyArray<Ranke
 
 /** Publicly listed trivias, newest first. */
 function recentFirst(trivias: ReadonlyArray<TriviaSummary>): ReadonlyArray<TriviaSummary> {
-  return trivias
-    .filter(isListedPublicly)
-    .toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
+  return trivias.filter(isListedPublicly).toSorted((a, b) => b.createdAt.getTime() - a.createdAt.getTime());
 }

@@ -2,8 +2,8 @@ import { z } from "zod";
 import { UserId } from "@/domain/trivia/ids";
 import { DisplayName } from "@/domain/user/displayName";
 
-export { Email, schema_User, schema_SignupInput, schema_LoginInput, PASSWORD_LIMITS };
-export type { User, SignupInput, LoginInput, Viewer };
+export type { LoginInput, SignupInput, User, Viewer };
+export { Email, PASSWORD_LIMITS, schema_LoginInput, schema_SignupInput, schema_User };
 
 const PASSWORD_LIMITS = { min: 8, max: 200 } as const;
 

@@ -25,7 +25,9 @@ describe("rankByPlays", () => {
 
   it("exclui trivias anônimas mesmo que sejam as mais jogadas", () => {
     const popularAnonymous = { ...anonymousTrivia(NOW, "anon-hot"), playCount: 1000 };
-    const ranked = rankByPlays([popularAnonymous, ownedTrivia(alice, { playCount: 1 }, "t-owned")].map(summarizeTrivia));
+    const ranked = rankByPlays(
+      [popularAnonymous, ownedTrivia(alice, { playCount: 1 }, "t-owned")].map(summarizeTrivia),
+    );
     expect(ranked.map((r) => r.trivia.id.value)).toEqual(["t-owned"]);
   });
 });

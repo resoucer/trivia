@@ -1,6 +1,7 @@
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { check, index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-export { users, passwordCredentials, sessions, trivias, triviaClaims, plays };
+export { authAttempts, passwordCredentials, playDedup, plays, sessions, triviaClaims, trivias, users };
 
 const users = sqliteTable("users", {
   id: text("id").primaryKey(),
@@ -42,6 +43,8 @@ const trivias = sqliteTable(
     index("trivias_owner_created_idx").on(t.ownerType, t.createdAt),
     index("trivias_owner_user_idx").on(t.ownerUserId),
     index("trivias_activity_idx").on(t.ownerType, t.lastActivityAt),
+    check("trivias_owner_type_check", sql`${t.ownerType} IN ('anonymous', 'user')`),
+    check("trivias_owner_user_check", sql`(${t.ownerType} = 'user') = (${t.ownerUserId} IS NOT NULL)`),
   ],
 );
 
@@ -61,4 +64,30 @@ const plays = sqliteTable(
     playedAt: text("played_at").notNull(),
   },
   (t) => [index("plays_trivia_idx").on(t.triviaId)],
+);
+
+/**
+ * At most one counted play per (trivia, visitor, day). `play_id` is the play that claimed the slot,
+ * so a batch can tell whether the current play was the first of the day. No raw IP is stored.
+ */
+const playDedup = sqliteTable(
+  "play_dedup",
+  {
+    triviaId: text("trivia_id").notNull(),
+    visitorKey: text("visitor_key").notNull(),
+    day: text("day").notNull(),
+    playId: text("play_id").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.triviaId, t.visitorKey, t.day] }), index("play_dedup_day_idx").on(t.day)],
+);
+
+/** Attempts per (action + HMAC of the client IP, fixed window). Raw IPs are never stored. */
+const authAttempts = sqliteTable(
+  "auth_attempts",
+  {
+    key: text("key").notNull(),
+    windowStart: text("window_start").notNull(),
+    count: integer("count").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.key, t.windowStart] }), index("auth_attempts_window_idx").on(t.windowStart)],
 );

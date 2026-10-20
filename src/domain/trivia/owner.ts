@@ -2,8 +2,8 @@ import { z } from "zod";
 import { UserId } from "@/domain/trivia/ids";
 import type { Viewer } from "@/domain/user/user";
 
-export { schema_Owner, anonymousOwner, userOwner, encodeOwner, ownerFromViewer, isOwnedBy };
 export type { Owner, OwnerEncoded };
+export { anonymousOwner, encodeOwner, isOwnedBy, ownerFromViewer, schema_Owner, userOwner };
 
 /**
  * Who owns a trivia.

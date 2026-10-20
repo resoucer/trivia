@@ -1,9 +1,7 @@
-export { Just, Nothing, fromNullable, mapMaybe, withDefault, matchMaybe, isJust, toNullable };
 export type { Maybe };
+export { fromNullable, isJust, Just, mapMaybe, matchMaybe, Nothing, toNullable, withDefault };
 
-type Maybe<T> =
-  | { readonly type: "just"; readonly value: T }
-  | { readonly type: "nothing" };
+type Maybe<T> = { readonly type: "just"; readonly value: T } | { readonly type: "nothing" };
 
 function Just<T>(value: T): Maybe<T> {
   return { type: "just", value };
@@ -21,10 +19,7 @@ function isJust<T>(maybe: Maybe<T>): maybe is { readonly type: "just"; readonly 
   return maybe.type === "just";
 }
 
-function matchMaybe<T, R>(
-  maybe: Maybe<T>,
-  cases: { readonly just: (value: T) => R; readonly nothing: () => R },
-): R {
+function matchMaybe<T, R>(maybe: Maybe<T>, cases: { readonly just: (value: T) => R; readonly nothing: () => R }): R {
   switch (maybe.type) {
     case "just":
       return cases.just(maybe.value);
@@ -38,14 +33,14 @@ function matchMaybe<T, R>(
 }
 
 function mapMaybe<T, R>(maybe: Maybe<T>, f: (value: T) => R): Maybe<R> {
-  return matchMaybe(maybe, { just: (value) => Just(f(value)), nothing: () => Nothing<R>() });
+  return matchMaybe(maybe, { just: (value: T): Maybe<R> => Just(f(value)), nothing: (): Maybe<R> => Nothing<R>() });
 }
 
 function withDefault<T>(maybe: Maybe<T>, fallback: T): T {
-  return matchMaybe(maybe, { just: (value) => value, nothing: () => fallback });
+  return matchMaybe(maybe, { just: (value: T): T => value, nothing: (): T => fallback });
 }
 
 /** Encoding boundary only (DB columns, JSON DTOs). Domain code stays on Maybe. */
 function toNullable<T>(maybe: Maybe<T>): T | null {
-  return matchMaybe<T, T | null>(maybe, { just: (value) => value, nothing: () => null });
+  return matchMaybe<T, T | null>(maybe, { just: (value: T): T | null => value, nothing: (): T | null => null });
 }

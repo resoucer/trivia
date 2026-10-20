@@ -1,9 +1,12 @@
-import { ResultAsync, errAsync, okAsync } from "neverthrow";
+import { errAsync, okAsync, type ResultAsync } from "neverthrow";
 import type { AppError } from "@/application/appError";
+import { type AuthAction, authRateLimitOf, decideAttempt, windowStart } from "@/domain/auth/rateLimit";
 import { schema_LoginInput, schema_SignupInput, type User, type Viewer } from "@/domain/user/user";
+import type { NetworkHash } from "@/domain/visitor/visitor";
 import { hashPassword, verifyPassword } from "@/infra/auth/password";
 import type { Db } from "@/infra/db/db";
 import { newSecretToken, newUserId, sha256 } from "@/infra/random";
+import { countAttempt } from "@/infra/repositories/rateLimitRepository";
 import {
   deleteSession,
   findUserBySessionTokenHash,
@@ -14,8 +17,8 @@ import {
 import type { Maybe } from "@/lib/maybe";
 import { parseWith } from "@/lib/validation";
 
-export { signupUseCase, loginUseCase, logoutUseCase, viewerFromSessionToken };
 export type { StartedSession };
+export { guardAuthAttempt, loginUseCase, logoutUseCase, signupUseCase, viewerFromSessionToken };
 
 const SESSION_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 
@@ -69,5 +72,28 @@ function viewerFromSessionToken(db: Db, token: Maybe<string>, now: Date): Result
   if (token.type === "nothing") return okAsync({ type: "anonymous" });
   return findUserBySessionTokenHash(db, sha256(token.value), now).map(
     (user): Viewer => (user.type === "just" ? { type: "user", user: user.value } : { type: "anonymous" }),
+  );
+}
+
+/**
+ * Counts this attempt for the client (HMAC of its IP) and rejects it once the action's fixed-window
+ * limit is exceeded. Every attempt counts, successful or not, which also caps mass sign-ups.
+ */
+function guardAuthAttempt(db: Db, action: AuthAction, client: NetworkHash, now: Date): ResultAsync<null, AppError> {
+  const limit = authRateLimitOf(action);
+  return countAttempt(db, `${action}:${client.value}`, windowStart(limit, now)).andThen(
+    (attempts): ResultAsync<null, AppError> => {
+      const decision = decideAttempt(limit, attempts, now);
+      switch (decision.type) {
+        case "allowed":
+          return okAsync(null);
+        case "limited":
+          return errAsync({ type: "rate-limited", retryAfterSeconds: decision.retryAfterSeconds });
+        default: {
+          const _exhaustiveCheck: never = decision;
+          throw new Error(`Unknown rate decision: ${JSON.stringify(_exhaustiveCheck)}`);
+        }
+      }
+    },
   );
 }

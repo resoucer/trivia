@@ -1,10 +1,10 @@
-import { NextResponse } from "next/server";
 import { ResultAsync } from "neverthrow";
+import { NextResponse } from "next/server";
 import type { AppError } from "@/application/appError";
-import type { ScoringError } from "@/domain/trivia/scoring";
 import type { ErrorDto } from "@/contract/dto";
+import type { ScoringError } from "@/domain/trivia/scoring";
 
-export { errorStatus, errorMessage, errorResponse, jsonResponse, respond, readJsonBody };
+export { errorMessage, errorResponse, errorStatus, jsonResponse, readJsonBody, respond };
 
 function scoringMessage(error: ScoringError): string {
   switch (error.type) {
@@ -38,10 +38,13 @@ function errorStatus(error: AppError): number {
     case "email-taken":
     case "already-owned":
       return 409;
+    case "rate-limited":
+      return 429;
     case "db-failure":
     case "corrupt-data":
     case "crypto-failure":
     case "corrupt-hash":
+    case "config":
       return 500;
     default: {
       const _exhaustiveCheck: never = error;
@@ -68,10 +71,13 @@ function errorMessage(error: AppError): string {
       return "Já existe uma conta com este e-mail.";
     case "already-owned":
       return "Esta trivia já pertence a uma conta.";
+    case "rate-limited":
+      return `Muitas tentativas. Tente de novo em ${Math.ceil(error.retryAfterSeconds / 60)} minuto(s).`;
     case "db-failure":
     case "corrupt-data":
     case "crypto-failure":
     case "corrupt-hash":
+    case "config":
       return "Algo deu errado do nosso lado. Tente novamente.";
     default: {
       const _exhaustiveCheck: never = error;
@@ -90,7 +96,9 @@ function errorResponse(error: AppError): NextResponse<ErrorDto> {
       issues: error.type === "validation" ? error.issues.map((i) => ({ path: [...i.path], message: i.message })) : [],
     },
   };
-  return NextResponse.json(body, { status });
+  const headers: Record<string, string> =
+    error.type === "rate-limited" ? { "Retry-After": String(error.retryAfterSeconds) } : {};
+  return NextResponse.json(body, { status, headers });
 }
 
 function jsonResponse<T>(body: T, status: number = 200): NextResponse<T> {

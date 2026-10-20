@@ -1,7 +1,7 @@
 import type { ValidationIssue } from "@/lib/validation";
 
-export { dbFailure, corruptData };
 export type { DbError };
+export { corruptData, dbFailure };
 
 /** Infrastructure failures, kept apart from domain errors such as "not found". */
 type DbError =
