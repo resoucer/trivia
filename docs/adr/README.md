@@ -8,3 +8,4 @@ Para criar um novo ADR: copie [0000-template.md](0000-template.md) para o próxi
 | --- | --- | --- |
 | [NNNN](0000-template.md) | Título curto da decisão | Modelo |
 | [0001](0001-registrar-decisoes-de-arquitetura.md) | Registrar decisões de arquitetura com ADRs | Aceito |
+| [0002](0002-nextjs-app-router.md) | Next.js com App Router como framework web | Aceito |
