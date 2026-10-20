@@ -1,15 +1,17 @@
-import { okAsync, ResultAsync } from "neverthrow";
+import { okAsync, Result, ResultAsync } from "neverthrow";
 import { TriviaId, UserId } from "@/domain/trivia/ids";
 import { anonymousOwner, userOwner } from "@/domain/trivia/owner";
-import { type Creator, createTrivia, type Trivia, type TriviaDraft } from "@/domain/trivia/trivia";
+import { type Creator, createTrivia, schema_TriviaDraft, type Trivia, type TriviaDraft } from "@/domain/trivia/trivia";
 import { DisplayName } from "@/domain/user/displayName";
 import { Email, type User } from "@/domain/user/user";
 import { hashPassword } from "@/infra/auth/password";
 import type { Db } from "@/infra/db/db";
 import type { DbError } from "@/infra/db/dbError";
+import { DEFAULT_TRIVIAS, defaultTriviaDraftInput } from "@/infra/db/defaultTrivias";
 import { findTrivia, insertTrivia } from "@/infra/repositories/triviaRepository";
 import { findUserWithPasswordByEmail, insertUserWithPassword } from "@/infra/repositories/userRepository";
 import { Just, Nothing } from "@/lib/maybe";
+import { parseWith } from "@/lib/validation";
 
 export { SEED_DEMO_USER, seedDefaults };
 
@@ -100,6 +102,24 @@ function seedTrivia(seed: SeedTrivia, creator: Creator, now: Date): Trivia {
   return { ...createTrivia(seed.draft, creator, new TriviaId(seed.id), now), playCount: seed.playCount };
 }
 
+/** Default questionnaires, validated by the same schema as user-created trivias. */
+function defaultTrivias(owner: Creator, now: Date): Result<ReadonlyArray<Trivia>, DbError> {
+  return Result.combine(
+    DEFAULT_TRIVIAS.map((seed, i) =>
+      parseWith(schema_TriviaDraft, defaultTriviaDraftInput(seed))
+        .mapErr(
+          (e): DbError => ({ type: "db-failure", message: `invalid seed ${seed.id}: ${e.issues[0]?.message ?? ""}` }),
+        )
+        .map(
+          (draft): Trivia => ({
+            ...createTrivia(draft, owner, new TriviaId(seed.id), new Date(now.getTime() - (i + 10) * 60_000)),
+            playCount: seed.playCount,
+          }),
+        ),
+    ),
+  );
+}
+
 /** Returns the demo user, creating it (with its password) only when its e-mail is not registered yet. */
 function ensureDemoUser(db: Db, now: Date): ResultAsync<User, DbError> {
   return findUserWithPasswordByEmail(db, new Email(SEED_DEMO_USER.email)).andThen(
@@ -137,12 +157,15 @@ function seedDefaults(db: Db, now: Date): ResultAsync<number, DbError> {
   return ensureDemoUser(db, now).andThen((demo) => {
     const owner: Creator = { owner: userOwner(demo.id), displayName: demo.displayName };
     const anonymous: Creator = { owner: anonymousOwner(), displayName: new DisplayName("Visitante") };
-    const trivias: ReadonlyArray<Trivia> = [
-      ...ownedSeeds.map((seed, i) => seedTrivia(seed, owner, new Date(now.getTime() - i * 60_000))),
-      seedTrivia(anonymousSeed, anonymous, now),
-    ];
-    return ResultAsync.combine(trivias.map((t) => insertIfMissing(db, t))).map(
-      (inserted): number => inserted.filter((wasInserted) => wasInserted).length,
-    );
+    return defaultTrivias(owner, now).asyncAndThen((defaults) => {
+      const trivias: ReadonlyArray<Trivia> = [
+        ...ownedSeeds.map((seed, i) => seedTrivia(seed, owner, new Date(now.getTime() - i * 60_000))),
+        seedTrivia(anonymousSeed, anonymous, now),
+        ...defaults,
+      ];
+      return ResultAsync.combine(trivias.map((t) => insertIfMissing(db, t))).map(
+        (inserted): number => inserted.filter((wasInserted) => wasInserted).length,
+      );
+    });
   });
 }
