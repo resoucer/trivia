@@ -1,12 +1,19 @@
 import { errAsync, okAsync, type Result, type ResultAsync } from "neverthrow";
 import { z } from "zod";
 import { type AppError, forbidden, notFound, unauthenticated } from "@/application/appError";
-import { TriviaId } from "@/domain/trivia/ids";
+import { QuestionId, TriviaId } from "@/domain/trivia/ids";
 import { canEditTrivia, claimTrivia, expirationCutoff, isExpired } from "@/domain/trivia/lifecycle";
 import { anonymousOwner, userOwner } from "@/domain/trivia/owner";
 import { createPlay, type PlayCounting, uniquePlaySlot } from "@/domain/trivia/play";
 import { type RankedTrivia, rankByPlays, recentFirst } from "@/domain/trivia/ranking";
-import { type Score, schema_Submission, scoreSubmission } from "@/domain/trivia/scoring";
+import {
+  type AnswerCheck,
+  checkAnswer,
+  type Score,
+  schema_AnswerCheckInput,
+  schema_Submission,
+  scoreSubmission,
+} from "@/domain/trivia/scoring";
 import {
   type Creator,
   createTrivia,
@@ -39,6 +46,7 @@ import { parseWith, type ValidationError } from "@/lib/validation";
 
 export type { CreatedTrivia, PlayOutcome };
 export {
+  checkAnswerUseCase,
   claimTriviaUseCase,
   cleanupExpiredUseCase,
   createTriviaUseCase,
@@ -132,6 +140,29 @@ function playTriviaUseCase(
             }),
           ),
         (error) => errAsync<PlayOutcome, AppError>({ type: "scoring", error }),
+      ),
+    ),
+  );
+}
+
+/**
+ * Immediate feedback for one question (quiz shown one question at a time). Read-only: it neither
+ * records a play nor counts as activity; the final submission goes through `playTriviaUseCase`.
+ */
+function checkAnswerUseCase(
+  db: Db,
+  rawId: string,
+  rawQuestionId: string,
+  input: unknown,
+  now: Date,
+): ResultAsync<AnswerCheck, AppError> {
+  return loadTrivia(db, rawId, now).andThen((trivia) =>
+    fromParse(parseWith(QuestionId.schema, rawQuestionId)).andThen((questionId) =>
+      fromParse(parseWith(schema_AnswerCheckInput, input)).andThen((answer) =>
+        checkAnswer(trivia, questionId, answer.choiceId).match(
+          (check) => okAsync<AnswerCheck, AppError>(check),
+          (error) => errAsync<AnswerCheck, AppError>({ type: "scoring", error }),
+        ),
       ),
     ),
   );
