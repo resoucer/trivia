@@ -12,3 +12,4 @@ Para criar um novo ADR: copie [0000-template.md](0000-template.md) para o próxi
 | [0003](0003-convencoes-typescript.md) | Convenções de TypeScript do projeto | Aceito |
 | [0004](0004-zod-como-base-de-schemas.md) | Zod como base de todos os schemas | Aceito |
 | [0005](0005-tratamento-de-erros-com-result.md) | Erros esperados como valores com `Result` (neverthrow) | Aceito |
+| [0006](0006-sqlite-drizzle-libsql.md) | SQLite (libSQL) com Drizzle ORM, com caminho para Postgres | Aceito |
