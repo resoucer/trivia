@@ -4,7 +4,7 @@ import { type AppError, forbidden, notFound, unauthenticated } from "@/applicati
 import { TriviaId } from "@/domain/trivia/ids";
 import { canEditTrivia, claimTrivia, expirationCutoff, isExpired } from "@/domain/trivia/lifecycle";
 import { anonymousOwner, userOwner } from "@/domain/trivia/owner";
-import { createPlay } from "@/domain/trivia/play";
+import { createPlay, type PlayCounting, uniquePlaySlot } from "@/domain/trivia/play";
 import { type RankedTrivia, rankByPlays, recentFirst } from "@/domain/trivia/ranking";
 import { type Score, schema_Submission, scoreSubmission } from "@/domain/trivia/scoring";
 import {
@@ -18,6 +18,7 @@ import {
 } from "@/domain/trivia/trivia";
 import { DisplayName } from "@/domain/user/displayName";
 import type { Viewer } from "@/domain/user/user";
+import type { Visitor } from "@/domain/visitor/visitor";
 import type { Db } from "@/infra/db/db";
 import { newPlayId, newSecretToken, newTriviaId, sha256 } from "@/infra/random";
 import {
@@ -55,7 +56,8 @@ type CreatedTrivia = {
   readonly claimToken: Maybe<string>;
 };
 
-type PlayOutcome = { readonly trivia: Trivia; readonly score: Score };
+/** A play is always scored; `counting` tells whether it also incremented the trivia's play count. */
+type PlayOutcome = { readonly trivia: Trivia; readonly score: Score; readonly counting: PlayCounting };
 
 function fromParse<T>(result: Result<T, ValidationError>): ResultAsync<T, AppError> {
   return result.match(
@@ -110,13 +112,24 @@ function loadTrivia(db: Db, rawId: string, now: Date): ResultAsync<Trivia, AppEr
   );
 }
 
-function playTriviaUseCase(db: Db, rawId: string, input: unknown, now: Date): ResultAsync<PlayOutcome, AppError> {
+function playTriviaUseCase(
+  db: Db,
+  visitor: Visitor,
+  rawId: string,
+  input: unknown,
+  now: Date,
+): ResultAsync<PlayOutcome, AppError> {
   return loadTrivia(db, rawId, now).andThen((trivia) =>
     fromParse(parseWith(schema_Submission, input)).andThen((submission) =>
       scoreSubmission(trivia, submission).match(
         (score) =>
-          recordPlay(db, createPlay(newPlayId(), trivia.id, score, now)).map(
-            (): PlayOutcome => ({ trivia: touchTrivia(trivia, now), score }),
+          recordPlay(db, createPlay(newPlayId(), trivia.id, score, now), uniquePlaySlot(trivia.id, visitor, now)).map(
+            // The stored counter is authoritative when other plays happen concurrently.
+            (recorded): PlayOutcome => ({
+              trivia: { ...touchTrivia(trivia, recorded.counting, now), playCount: recorded.playCount },
+              score,
+              counting: recorded.counting,
+            }),
           ),
         (error) => errAsync<PlayOutcome, AppError>({ type: "scoring", error }),
       ),

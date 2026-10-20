@@ -9,11 +9,21 @@ import {
   rankingUseCase,
 } from "@/application/triviaService";
 import type { Viewer } from "@/domain/user/user";
+import { NetworkHash, type Visitor, VisitorId } from "@/domain/visitor/visitor";
 import { openDb } from "@/infra/db/client";
 import type { Db } from "@/infra/db/db";
 import { draftInput, NOW } from "@/test/fixtures";
 
 const DAY = 24 * 60 * 60 * 1000;
+const visitorA: Visitor = { type: "visitor", visitorId: new VisitorId("visitor-a-000000000000001") };
+const visitorB: Visitor = { type: "visitor", visitorId: new VisitorId("visitor-b-000000000000002") };
+const network: Visitor = { type: "network", hash: new NetworkHash("b".repeat(64)) };
+const answers = {
+  answers: [
+    { questionId: "q1", choiceId: "c2" },
+    { questionId: "q2", choiceId: "c1" },
+  ],
+};
 
 async function freshDb(): Promise<Db> {
   return (await openDb(":memory:"))._unsafeUnwrap();
@@ -38,6 +48,7 @@ describe("fluxo de trivias (SQLite em memória)", () => {
     const played = (
       await playTriviaUseCase(
         db,
+        visitorA,
         id,
         {
           answers: [
@@ -99,5 +110,62 @@ describe("fluxo de trivias (SQLite em memória)", () => {
     expect((await loginUseCase(db, { email: "dono@x.com", password: "errada" }, NOW))._unsafeUnwrapErr()).toEqual({
       type: "invalid-credentials",
     });
+  });
+});
+
+describe("contagem única de partidas por pessoa por dia", () => {
+  async function ownedTriviaId(db: Db): Promise<{ readonly id: string; readonly owner: Viewer }> {
+    const owner = await signup(db, "dono@x.com");
+    const created = (await createTriviaUseCase(db, owner, draftInput, NOW))._unsafeUnwrap();
+    return { id: created.trivia.id.value, owner };
+  }
+
+  async function play(db: Db, visitor: Visitor, id: string, at: Date): Promise<{ counted: string; playCount: number }> {
+    const outcome = (await playTriviaUseCase(db, visitor, id, answers, at))._unsafeUnwrap();
+    expect(outcome.score.correctCount).toBe(2);
+    return { counted: outcome.counting.type, playCount: outcome.trivia.playCount };
+  }
+
+  it("mesmo visitante no mesmo dia conta uma vez, mas sempre recebe a pontuação", async () => {
+    const db = await freshDb();
+    const { id } = await ownedTriviaId(db);
+    expect(await play(db, visitorA, id, NOW)).toEqual({ counted: "counted", playCount: 1 });
+    expect(await play(db, visitorA, id, new Date(NOW.getTime() + 60_000))).toEqual({
+      counted: "already-counted-today",
+      playCount: 1,
+    });
+    expect((await loadTrivia(db, id, NOW))._unsafeUnwrap().playCount).toBe(1);
+  });
+
+  it("visitantes diferentes contam separadamente (cookie, rede, usuário)", async () => {
+    const db = await freshDb();
+    const { id, owner } = await ownedTriviaId(db);
+    if (owner.type !== "user") throw new Error("fixture: owner must be a user");
+    const user: Visitor = { type: "user", userId: owner.user.id };
+    await play(db, visitorA, id, NOW);
+    expect((await play(db, visitorB, id, NOW)).playCount).toBe(2);
+    expect((await play(db, network, id, NOW)).playCount).toBe(3);
+    expect((await play(db, user, id, NOW)).playCount).toBe(4);
+    expect(await play(db, user, id, NOW)).toEqual({ counted: "already-counted-today", playCount: 4 });
+    expect((await rankingUseCase(db, 10))._unsafeUnwrap()[0]?.trivia.playCount).toBe(4);
+  });
+
+  it("vale por trivia: o mesmo visitante conta em outra trivia", async () => {
+    const db = await freshDb();
+    const { id, owner } = await ownedTriviaId(db);
+    const other = (await createTriviaUseCase(db, owner, draftInput, NOW))._unsafeUnwrap().trivia.id.value;
+    await play(db, visitorA, id, NOW);
+    expect(await play(db, visitorA, other, NOW)).toEqual({ counted: "counted", playCount: 1 });
+  });
+
+  it("vira o dia à meia-noite de São Paulo, não à meia-noite UTC", async () => {
+    const db = await freshDb();
+    const { id } = await ownedTriviaId(db);
+    const lateNightSp = new Date("2026-10-19T23:30:00.000-03:00");
+    const afterUtcMidnight = new Date("2026-10-19T23:59:00.000-03:00"); // já é dia 20 em UTC
+    const nextDaySp = new Date("2026-10-20T00:00:00.000-03:00");
+    expect((await play(db, visitorA, id, lateNightSp)).counted).toBe("counted");
+    expect((await play(db, visitorA, id, afterUtcMidnight)).counted).toBe("already-counted-today");
+    expect(await play(db, visitorA, id, nextDaySp)).toEqual({ counted: "counted", playCount: 2 });
   });
 });

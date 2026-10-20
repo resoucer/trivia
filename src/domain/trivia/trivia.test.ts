@@ -57,10 +57,17 @@ describe("editTrivia / touchTrivia", () => {
     expect(trivia.title).toBe("Capitais");
   });
 
-  it("uma partida incrementa o contador e a atividade", () => {
+  it("uma partida contada incrementa o contador e a atividade", () => {
     const later = new Date(NOW.getTime() + 5000);
-    const touched = touchTrivia(ownedTrivia(alice, {}, "trivia-1"), later);
+    const touched = touchTrivia(ownedTrivia(alice, {}, "trivia-1"), { type: "counted" }, later);
     expect(touched.playCount).toBe(1);
+    expect(touched.lastActivityAt).toEqual(later);
+  });
+
+  it("uma partida repetida no dia só atualiza a atividade", () => {
+    const later = new Date(NOW.getTime() + 5000);
+    const touched = touchTrivia(ownedTrivia(alice, {}, "trivia-1"), { type: "already-counted-today" }, later);
+    expect(touched.playCount).toBe(0);
     expect(touched.lastActivityAt).toEqual(later);
   });
 });

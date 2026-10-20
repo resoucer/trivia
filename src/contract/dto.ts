@@ -1,4 +1,5 @@
 import { z } from "zod";
+import { isCounted, type PlayCounting } from "@/domain/trivia/play";
 import type { RankedTrivia } from "@/domain/trivia/ranking";
 import type { Score } from "@/domain/trivia/scoring";
 import type { PublicTrivia, Trivia, TriviaSummary } from "@/domain/trivia/trivia";
@@ -72,6 +73,8 @@ const schema_PlayResultDto = z.object({
   correctCount: z.number().int(),
   totalCount: z.number().int(),
   playCount: z.number().int(),
+  /** false when this visitor already had a play counted for this trivia today (score is still returned). */
+  counted: z.boolean(),
   results: z.array(
     z.object({
       questionId: z.string(),
@@ -156,11 +159,12 @@ function encodePublicTrivia(t: PublicTrivia): PublicTriviaDto {
   };
 }
 
-function encodePlayResult(score: Score, playCount: number): PlayResultDto {
+function encodePlayResult(score: Score, playCount: number, counting: PlayCounting): PlayResultDto {
   return {
     correctCount: score.correctCount,
     totalCount: score.totalCount,
     playCount,
+    counted: isCounted(counting),
     results: score.results.map((r) => ({
       questionId: r.questionId.value,
       chosenChoiceId: r.chosenChoiceId.value,

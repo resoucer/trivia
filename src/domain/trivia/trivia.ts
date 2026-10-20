@@ -2,6 +2,7 @@ import { z } from "zod";
 import { ChoiceId, QuestionId, TriviaId } from "@/domain/trivia/ids";
 import { expiresAt } from "@/domain/trivia/lifecycle";
 import { encodeOwner, type Owner, schema_Owner } from "@/domain/trivia/owner";
+import { isCounted, type PlayCounting } from "@/domain/trivia/play";
 import { DisplayName } from "@/domain/user/displayName";
 import { fromNullable, Just, type Maybe, Nothing, toNullable } from "@/lib/maybe";
 
@@ -184,9 +185,9 @@ function editTrivia(trivia: Trivia, draft: TriviaDraft, now: Date): Trivia {
   };
 }
 
-/** Registers a play: bumps the play count and the activity timestamp. */
-function touchTrivia(trivia: Trivia, now: Date): Trivia {
-  return { ...trivia, playCount: trivia.playCount + 1, lastActivityAt: now };
+/** Registers a play: always refreshes activity, bumps the play count only if the play counted. */
+function touchTrivia(trivia: Trivia, counting: PlayCounting, now: Date): Trivia {
+  return { ...trivia, playCount: trivia.playCount + (isCounted(counting) ? 1 : 0), lastActivityAt: now };
 }
 
 function encodeTrivia(trivia: Trivia): TriviaEncoded {
