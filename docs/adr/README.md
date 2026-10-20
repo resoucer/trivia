@@ -20,3 +20,4 @@ Para criar um novo ADR: copie [0000-template.md](0000-template.md) para o próxi
 | [0011](0011-links-de-compartilhamento.md) | Links de compartilhamento pelo id público da trivia | Aceito |
 | [0012](0012-reivindicacao-de-trivia-anonima.md) | Reivindicar uma trivia anônima com token em cookie | Aceito |
 | [0013](0013-camadas-dominio-aplicacao-infra.md) | Camadas: domínio puro, aplicação, infraestrutura e borda web | Aceito |
+| [0014](0014-biome-como-linter-e-formatador.md) | Biome como linter e formatador | Aceito |
