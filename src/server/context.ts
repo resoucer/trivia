@@ -11,14 +11,16 @@ export { requestContext };
 
 type RequestContext = { readonly db: Db; readonly viewer: Viewer; readonly now: Date };
 
-/** Everything a request needs, resolved once: database, who is asking (via session cookie) and the clock. */
+/**
+ * Everything a request needs, resolved once: who is asking (session cookie), database and the clock.
+ * Cookies are read first on purpose: that marks pages as request-time rendered before any database
+ * access, so `next build` never touches the database (it may not be migrated yet).
+ */
 function requestContext(): ResultAsync<RequestContext, AppError> {
   const now = new Date();
-  return getDb()
-    .mapErr((e): AppError => e)
-    .andThen((db) =>
-      readSessionToken()
-        .andThen((token) => viewerFromSessionToken(db, token, now))
-        .map((viewer): RequestContext => ({ db, viewer, now })),
-    );
+  return readSessionToken().andThen((token) =>
+    getDb()
+      .mapErr((e): AppError => e)
+      .andThen((db) => viewerFromSessionToken(db, token, now).map((viewer): RequestContext => ({ db, viewer, now }))),
+  );
 }
