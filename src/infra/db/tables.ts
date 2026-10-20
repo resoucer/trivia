@@ -1,4 +1,5 @@
-import { index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { sql } from "drizzle-orm";
+import { check, index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
 export { passwordCredentials, plays, sessions, triviaClaims, trivias, users };
 
@@ -42,6 +43,8 @@ const trivias = sqliteTable(
     index("trivias_owner_created_idx").on(t.ownerType, t.createdAt),
     index("trivias_owner_user_idx").on(t.ownerUserId),
     index("trivias_activity_idx").on(t.ownerType, t.lastActivityAt),
+    check("trivias_owner_type_check", sql`${t.ownerType} IN ('anonymous', 'user')`),
+    check("trivias_owner_user_check", sql`(${t.ownerType} = 'user') = (${t.ownerUserId} IS NOT NULL)`),
   ],
 );
 
