@@ -1,4 +1,4 @@
-import { errAsync, okAsync, ResultAsync } from "neverthrow";
+import { errAsync, okAsync, type ResultAsync } from "neverthrow";
 import type { AppError } from "@/application/appError";
 import { schema_LoginInput, schema_SignupInput, type User, type Viewer } from "@/domain/user/user";
 import { hashPassword, verifyPassword } from "@/infra/auth/password";

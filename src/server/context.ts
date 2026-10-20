@@ -1,4 +1,4 @@
-import { ResultAsync } from "neverthrow";
+import type { ResultAsync } from "neverthrow";
 import type { AppError } from "@/application/appError";
 import { viewerFromSessionToken } from "@/application/authService";
 import type { Viewer } from "@/domain/user/user";

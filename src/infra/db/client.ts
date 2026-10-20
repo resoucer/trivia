@@ -26,7 +26,7 @@ const globalForDb = globalThis as typeof globalThis & {
 function getDb(): ResultAsync<Db, DbError> {
   const cached = globalForDb.__triviaDb;
   if (cached !== undefined) return cached;
-  const opened = openDb(process.env["DATABASE_URL"] ?? DEFAULT_DATABASE_URL)
+  const opened = openDb(process.env.DATABASE_URL ?? DEFAULT_DATABASE_URL)
     .andThen((db) => seedIfEmpty(db, new Date()).map((): Db => db))
     .orElse((error) => {
       // Do not cache failures: the next request retries.

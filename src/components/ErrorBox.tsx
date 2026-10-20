@@ -10,6 +10,7 @@ function ErrorBox({ error }: { error: ClientError }) {
       {issues.length > 0 ? (
         <ul className="mt-2 list-disc space-y-1 pl-5">
           {issues.map((issue, i) => (
+            // biome-ignore lint/suspicious/noArrayIndexKey: issues are a static, never-reordered list
             <li key={i}>
               {describeIssuePath(issue.path) === "" ? "" : `${describeIssuePath(issue.path)}: `}
               {issue.message}

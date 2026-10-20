@@ -11,7 +11,7 @@ const schema_NextParam = z.object({
     .default("/"),
 });
 
-function safeNext(searchParams: Readonly<Record<string, string | string[] | undefined>>): string {
+function safeNext(searchParams: Readonly<Record<string, string | Array<string> | undefined>>): string {
   const parsed = schema_NextParam.safeParse(searchParams);
   return parsed.success ? parsed.data.next : "/";
 }

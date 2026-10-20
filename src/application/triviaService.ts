@@ -1,4 +1,4 @@
-import { errAsync, okAsync, type Result, ResultAsync } from "neverthrow";
+import { errAsync, okAsync, type Result, type ResultAsync } from "neverthrow";
 import { z } from "zod";
 import { type AppError, forbidden, notFound, unauthenticated } from "@/application/appError";
 import { TriviaId } from "@/domain/trivia/ids";

@@ -125,6 +125,7 @@ function TriviaEditor({ mode, initial }: { mode: EditorMode; initial: TriviaForm
       </section>
 
       {form.questions.map((question, qi) => (
+        // biome-ignore lint/suspicious/noArrayIndexKey: questions have no id until saved; position is their identity
         <section key={qi} className="space-y-4 rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
           <div className="flex items-center justify-between">
             <h2 className="font-semibold text-slate-800">Pergunta {qi + 1}</h2>
@@ -148,6 +149,7 @@ function TriviaEditor({ mode, initial }: { mode: EditorMode; initial: TriviaForm
           <fieldset className="space-y-2">
             <legend className="mb-1 text-sm text-slate-600">Alternativas: marque a correta</legend>
             {question.choices.map((choice, ci) => (
+              // biome-ignore lint/suspicious/noArrayIndexKey: choices have no id until saved; position is their identity
               <div key={ci} className="flex items-center gap-2">
                 <input
                   type="radio"

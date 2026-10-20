@@ -9,7 +9,7 @@ export { ANONYMOUS_TTL_DAYS, canEditTrivia, claimTrivia, expirationCutoff, expir
 
 const ANONYMOUS_TTL_DAYS = 30;
 const DAY_MS = 24 * 60 * 60 * 1000;
-const ANONYMOUS_TTL_MS = ANONYMOUS_TTL_DAYS * DAY_MS;
+const ANONYMOUS_TTL_MS: number = ANONYMOUS_TTL_DAYS * DAY_MS;
 
 /** Anonymous trivias whose last activity is strictly before this instant are expired. */
 function expirationCutoff(now: Date): Date {

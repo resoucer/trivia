@@ -33,14 +33,14 @@ function matchMaybe<T, R>(maybe: Maybe<T>, cases: { readonly just: (value: T) =>
 }
 
 function mapMaybe<T, R>(maybe: Maybe<T>, f: (value: T) => R): Maybe<R> {
-  return matchMaybe(maybe, { just: (value) => Just(f(value)), nothing: () => Nothing<R>() });
+  return matchMaybe(maybe, { just: (value: T): Maybe<R> => Just(f(value)), nothing: (): Maybe<R> => Nothing<R>() });
 }
 
 function withDefault<T>(maybe: Maybe<T>, fallback: T): T {
-  return matchMaybe(maybe, { just: (value) => value, nothing: () => fallback });
+  return matchMaybe(maybe, { just: (value: T): T => value, nothing: (): T => fallback });
 }
 
 /** Encoding boundary only (DB columns, JSON DTOs). Domain code stays on Maybe. */
 function toNullable<T>(maybe: Maybe<T>): T | null {
-  return matchMaybe<T, T | null>(maybe, { just: (value) => value, nothing: () => null });
+  return matchMaybe<T, T | null>(maybe, { just: (value: T): T | null => value, nothing: (): T | null => null });
 }

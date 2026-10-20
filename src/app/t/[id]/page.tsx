@@ -17,7 +17,7 @@ export { generateMetadata, TriviaPage as default };
 
 type Props = {
   readonly params: Promise<{ id: string }>;
-  readonly searchParams: Promise<Record<string, string | string[] | undefined>>;
+  readonly searchParams: Promise<Record<string, string | Array<string> | undefined>>;
 };
 
 const dateFormat = new Intl.DateTimeFormat("pt-BR", { dateStyle: "long", timeZone: "America/Sao_Paulo" });
@@ -34,7 +34,7 @@ async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 async function TriviaPage({ params, searchParams }: Props) {
   const { id } = await params;
-  const justCreated = (await searchParams)["criada"] === "1";
+  const justCreated = (await searchParams).criada === "1";
   const { trivia, viewer, claimToken } = await unwrapForPage(
     requestContext().andThen((ctx) =>
       loadTrivia(ctx.db, id, ctx.now).andThen((trivia) =>

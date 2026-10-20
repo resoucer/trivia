@@ -26,7 +26,7 @@ const baseOptions = {
   httpOnly: true,
   sameSite: "lax",
   path: "/",
-  secure: process.env["NODE_ENV"] === "production",
+  secure: process.env.NODE_ENV === "production",
 } as const;
 
 function readCookie(name: string): ResultAsync<Maybe<string>, never> {
