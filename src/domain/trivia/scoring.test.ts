@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ChoiceId, QuestionId } from "@/domain/trivia/ids";
-import { Grade, gradeOf, scoreSubmission } from "@/domain/trivia/scoring";
+import { checkAnswer, Grade, gradeOf, scoreSubmission } from "@/domain/trivia/scoring";
 import { alice, ownedTrivia } from "@/test/fixtures";
 
 const trivia = ownedTrivia(alice, {}, "trivia-1");
@@ -39,5 +39,28 @@ describe("gradeOf", () => {
     expect(gradeOf({ correctCount: 4, totalCount: 5 })).toBe(Grade.Great);
     expect(gradeOf({ correctCount: 2, totalCount: 5 })).toBe(Grade.Fair);
     expect(gradeOf({ correctCount: 0, totalCount: 5 })).toBe(Grade.Poor);
+  });
+});
+
+describe("checkAnswer (uma pergunta por vez)", () => {
+  it("diz se acertou e qual é a correta", () => {
+    expect(checkAnswer(trivia, new QuestionId("q1"), new ChoiceId("c2"))._unsafeUnwrap()).toEqual({
+      questionId: new QuestionId("q1"),
+      chosenChoiceId: new ChoiceId("c2"),
+      correctChoiceId: new ChoiceId("c2"),
+      isCorrect: true,
+    });
+    const wrong = checkAnswer(trivia, new QuestionId("q2"), new ChoiceId("c2"))._unsafeUnwrap();
+    expect(wrong.isCorrect).toBe(false);
+    expect(wrong.correctChoiceId.value).toBe("c1");
+  });
+
+  it("rejeita pergunta desconhecida e alternativa inválida", () => {
+    expect(checkAnswer(trivia, new QuestionId("q9"), new ChoiceId("c1"))._unsafeUnwrapErr().type).toBe(
+      "unknown-question",
+    );
+    expect(checkAnswer(trivia, new QuestionId("q1"), new ChoiceId("c9"))._unsafeUnwrapErr().type).toBe(
+      "invalid-choice",
+    );
   });
 });

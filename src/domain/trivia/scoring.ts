@@ -3,8 +3,8 @@ import { z } from "zod";
 import { ChoiceId, QuestionId } from "@/domain/trivia/ids";
 import type { Trivia } from "@/domain/trivia/trivia";
 
-export type { QuestionResult, Score, ScoringError, Submission };
-export { Grade, gradeLabel, gradeOf, schema_Submission, scoreSubmission };
+export type { AnswerCheck, QuestionResult, Score, ScoringError, Submission };
+export { checkAnswer, Grade, gradeLabel, gradeOf, schema_AnswerCheckInput, schema_Submission, scoreSubmission };
 
 const schema_Submission = z.object({
   answers: z
@@ -13,6 +13,12 @@ const schema_Submission = z.object({
 });
 
 type Submission = z.infer<typeof schema_Submission>;
+
+/** Body of a single-answer check (one question at a time). */
+const schema_AnswerCheckInput = z.object({ choiceId: ChoiceId.schema });
+
+/** Immediate feedback for one question: same shape as a line of the final score. */
+type AnswerCheck = QuestionResult;
 
 type QuestionResult = {
   readonly questionId: QuestionId;
@@ -68,6 +74,25 @@ function scoreSubmission(trivia: Trivia, submission: Submission): Result<Score, 
     correctCount: results.filter((r) => r.isCorrect).length,
     totalCount: results.length,
     results,
+  });
+}
+
+/**
+ * Checks one answer without recording anything. Reveals the correct choice of that question only
+ * (accepted trade-off for immediate feedback, see ADR 0019); the score that counts comes from
+ * `scoreSubmission` on the final submission.
+ */
+function checkAnswer(trivia: Trivia, questionId: QuestionId, choiceId: ChoiceId): Result<AnswerCheck, ScoringError> {
+  const question = trivia.questions.find((q) => q.id.equals(questionId));
+  if (question === undefined) return err({ type: "unknown-question", questionId });
+  if (!question.choices.some((c) => c.id.equals(choiceId))) {
+    return err({ type: "invalid-choice", questionId, choiceId });
+  }
+  return ok({
+    questionId,
+    chosenChoiceId: choiceId,
+    correctChoiceId: question.correctChoiceId,
+    isCorrect: choiceId.equals(question.correctChoiceId),
   });
 }
 
