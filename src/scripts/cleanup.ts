@@ -3,12 +3,12 @@ import type { AppError } from "@/application/appError";
 import { cleanupExpiredUseCase } from "@/application/triviaService";
 import type { TriviaId } from "@/domain/trivia/ids";
 import { ANONYMOUS_TTL_DAYS } from "@/domain/trivia/lifecycle";
-import { openDb } from "@/infra/db/client";
+import { databaseUrl, openDb } from "@/infra/db/client";
 
 /** `npm run cleanup`: deletes anonymous trivias inactive for more than ANONYMOUS_TTL_DAYS. Meant for cron. */
-const outcome: Result<ReadonlyArray<TriviaId>, AppError> = await openDb(
-  process.env.DATABASE_URL ?? "file:data/trivia.db",
-).andThen((db) => cleanupExpiredUseCase(db, new Date()));
+const outcome: Result<ReadonlyArray<TriviaId>, AppError> = await openDb(databaseUrl()).andThen((db) =>
+  cleanupExpiredUseCase(db, new Date()),
+);
 
 outcome.match(
   (ids) => {
