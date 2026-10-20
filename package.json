@@ -8,7 +8,9 @@
     "build": "next build",
     "start": "next start -p 3000",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "db:seed": "tsx src/scripts/seed.ts",
+    "cleanup": "tsx src/scripts/cleanup.ts"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
@@ -26,6 +28,7 @@
     "@types/react-dom": "^19.3.0",
     "postcss": "^8.5.31",
     "tailwindcss": "^4.3.3",
+    "tsx": "^4.23.15",
     "typescript": "^7.0.2",
     "vitest": "^4.1.12"
   },
