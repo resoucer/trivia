@@ -19,7 +19,8 @@ type AppError =
   | { readonly type: "unauthenticated" }
   | { readonly type: "email-taken" }
   | { readonly type: "invalid-credentials" }
-  | { readonly type: "already-owned" };
+  | { readonly type: "already-owned" }
+  | { readonly type: "rate-limited"; readonly retryAfterSeconds: number };
 
 function notFound(): AppError {
   return { type: "not-found" };

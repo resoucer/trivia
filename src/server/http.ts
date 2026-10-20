@@ -38,6 +38,8 @@ function errorStatus(error: AppError): number {
     case "email-taken":
     case "already-owned":
       return 409;
+    case "rate-limited":
+      return 429;
     case "db-failure":
     case "corrupt-data":
     case "crypto-failure":
@@ -69,6 +71,8 @@ function errorMessage(error: AppError): string {
       return "Já existe uma conta com este e-mail.";
     case "already-owned":
       return "Esta trivia já pertence a uma conta.";
+    case "rate-limited":
+      return `Muitas tentativas. Tente de novo em ${Math.ceil(error.retryAfterSeconds / 60)} minuto(s).`;
     case "db-failure":
     case "corrupt-data":
     case "crypto-failure":
@@ -92,7 +96,9 @@ function errorResponse(error: AppError): NextResponse<ErrorDto> {
       issues: error.type === "validation" ? error.issues.map((i) => ({ path: [...i.path], message: i.message })) : [],
     },
   };
-  return NextResponse.json(body, { status });
+  const headers: Record<string, string> =
+    error.type === "rate-limited" ? { "Retry-After": String(error.retryAfterSeconds) } : {};
+  return NextResponse.json(body, { status, headers });
 }
 
 function jsonResponse<T>(body: T, status: number = 200): NextResponse<T> {
