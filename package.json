@@ -11,6 +11,8 @@
     "test": "vitest run"
   },
   "dependencies": {
+    "@libsql/client": "^0.18.0",
+    "drizzle-orm": "^0.45.4",
     "neverthrow": "^8.2.0",
     "next": "^16.4.2",
     "react": "^19.3.1",
