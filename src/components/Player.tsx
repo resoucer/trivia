@@ -123,7 +123,11 @@ function ScoreCard({ result, onRetry }: { result: PlayResultDto; onRetry: () => 
         {result.correctCount}/{result.totalCount}
       </p>
       <p className="mt-2">{gradeLabel(gradeOf(result))}</p>
-      <p className="mt-1 text-sm text-indigo-100">Esta trivia já foi jogada {result.playCount} vez(es).</p>
+      <p className="mt-1 text-sm text-indigo-100">
+        {result.counted
+          ? `Partida contada! Esta trivia soma ${result.playCount} partida(s) (no máximo uma por pessoa por dia).`
+          : `Você já jogou esta trivia hoje: esta partida não conta de novo para o ranking (${result.playCount} no total).`}
+      </p>
       <button
         type="button"
         onClick={onRetry}
