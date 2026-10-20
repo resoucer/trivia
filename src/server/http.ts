@@ -42,6 +42,7 @@ function errorStatus(error: AppError): number {
     case "corrupt-data":
     case "crypto-failure":
     case "corrupt-hash":
+    case "config":
       return 500;
     default: {
       const _exhaustiveCheck: never = error;
@@ -72,6 +73,7 @@ function errorMessage(error: AppError): string {
     case "corrupt-data":
     case "crypto-failure":
     case "corrupt-hash":
+    case "config":
       return "Algo deu errado do nosso lado. Tente novamente.";
     default: {
       const _exhaustiveCheck: never = error;

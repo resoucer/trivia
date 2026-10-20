@@ -1,5 +1,6 @@
 import type { ScoringError } from "@/domain/trivia/scoring";
 import type { PasswordHashError } from "@/infra/auth/password";
+import type { ConfigError } from "@/infra/config";
 import type { DbError } from "@/infra/db/dbError";
 import type { ValidationError } from "@/lib/validation";
 
@@ -11,6 +12,7 @@ type AppError =
   | ValidationError
   | DbError
   | PasswordHashError
+  | ConfigError
   | { readonly type: "scoring"; readonly error: ScoringError }
   | { readonly type: "not-found" }
   | { readonly type: "forbidden" }
