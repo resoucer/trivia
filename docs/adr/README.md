@@ -23,3 +23,4 @@ Para criar um novo ADR: copie [0000-template.md](0000-template.md) para o próxi
 | [0014](0014-biome-como-linter-e-formatador.md) | Biome como linter e formatador | Aceito |
 | [0015](0015-migracoes-versionadas-drizzle-kit.md) | Migrações versionadas com drizzle-kit | Aceito |
 | [0016](0016-contagem-unica-de-partidas.md) | Contagem única de partidas por pessoa por dia | Aceito |
+| [0017](0017-integracao-continua-github-actions.md) | Integração contínua com GitHub Actions | Aceito |
