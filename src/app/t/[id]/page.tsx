@@ -3,7 +3,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { loadTrivia } from "@/application/triviaService";
 import { ClaimButton } from "@/components/ClaimButton";
-import { Player } from "@/components/Player";
+import { Quiz } from "@/components/Quiz";
 import { ShareBox } from "@/components/ShareBox";
 import { encodePublicTrivia, sharePath } from "@/contract/dto";
 import { ANONYMOUS_TTL_DAYS, canEditTrivia } from "@/domain/trivia/lifecycle";
@@ -109,7 +109,7 @@ async function TriviaPage({ params, searchParams }: Props) {
         </details>
       )}
 
-      <Player trivia={encodePublicTrivia(publicTrivia)} />
+      <Quiz trivia={encodePublicTrivia(publicTrivia)} sharePath={path} />
     </div>
   );
 }
