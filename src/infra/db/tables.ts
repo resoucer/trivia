@@ -1,7 +1,7 @@
 import { sql } from "drizzle-orm";
-import { check, index, integer, sqliteTable, text } from "drizzle-orm/sqlite-core";
+import { check, index, integer, primaryKey, sqliteTable, text } from "drizzle-orm/sqlite-core";
 
-export { passwordCredentials, plays, sessions, triviaClaims, trivias, users };
+export { passwordCredentials, playDedup, plays, sessions, triviaClaims, trivias, users };
 
 const users = sqliteTable("users", {
   id: text("id").primaryKey(),
@@ -64,4 +64,19 @@ const plays = sqliteTable(
     playedAt: text("played_at").notNull(),
   },
   (t) => [index("plays_trivia_idx").on(t.triviaId)],
+);
+
+/**
+ * At most one counted play per (trivia, visitor, day). `play_id` is the play that claimed the slot,
+ * so a batch can tell whether the current play was the first of the day. No raw IP is stored.
+ */
+const playDedup = sqliteTable(
+  "play_dedup",
+  {
+    triviaId: text("trivia_id").notNull(),
+    visitorKey: text("visitor_key").notNull(),
+    day: text("day").notNull(),
+    playId: text("play_id").notNull(),
+  },
+  (t) => [primaryKey({ columns: [t.triviaId, t.visitorKey, t.day] }), index("play_dedup_day_idx").on(t.day)],
 );
