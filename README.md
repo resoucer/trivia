@@ -18,10 +18,27 @@ npm install
 npm run dev          # http://localhost:3000
 ```
 
-Na primeira execução o banco SQLite é criado em `data/trivia.db`, as migrações de `drizzle/` são aplicadas e entram dados de exemplo:
+Na primeira execução o banco SQLite é criado em `data/trivia.db`, as migrações de `drizzle/` são aplicadas e entram os dados de exemplo (seed):
 
-- 3 trivias de conta (no ranking) e 1 anônima (`/t/seed-anonima`, só por link);
-- usuário de demonstração: `demo@trivia.local` / `trivia1234`.
+- usuário de demonstração: `demo@trivia.local` / `trivia1234` (aparece como "Equipe Trivia");
+- 10 questionários padrão do usuário demo, que entram no ranking ([ADR 0020](docs/adr/0020-questionarios-padrao-no-seed.md)):
+
+  | Id | Tema | Perguntas |
+  | --- | --- | --- |
+  | `seed-geografia-brasil` | Geografia do Brasil | 22 |
+  | `seed-historia-brasil` | História do Brasil | 8 |
+  | `seed-ciencia-geral` | Ciência geral | 17 |
+  | `seed-programacao-funcional` | Programação funcional | 14 |
+  | `seed-futebol` | Futebol | 17 |
+  | `seed-cinema` | Cinema | 23 |
+  | `seed-musica-brasileira` | Música brasileira | 23 |
+  | `seed-astronomia` | Astronomia | 20 |
+  | `seed-culinaria` | Culinária | 18 |
+  | `seed-tecnologia` | Tecnologia | 11 |
+
+- 3 trivias curtas de conta (`seed-brasil`, `seed-fp`, `seed-ciencia`) e 1 anônima (`/t/seed-anonima`, só por link).
+
+**As contagens iniciais de partidas do seed são fictícias** (só para o ranking de demonstração não ficar plano). O conteúdo fica em `src/infra/db/defaultTrivias.ts`, como dados tipados validados pelos schemas Zod (há teste para isso). O seed é idempotente: insere o que faltar pelo id e não altera o que já existe, então `npm run db:seed` pode rodar de novo a qualquer momento (inclusive para completar um banco antigo).
 
 Outros comandos:
 
@@ -35,7 +52,8 @@ Outros comandos:
 | `npm run cleanup` | limpeza diária (cron): trivias anônimas com mais de 30 dias sem atividade, registros de contagem única com mais de 2 dias, sessões expiradas e contadores de tentativas de login antigos |
 | `npm run db:migrate` | aplica as migrações pendentes no `DATABASE_URL` (passo obrigatório no deploy de produção) |
 | `npm run db:generate -- --name <descricao>` | gera uma nova migração a partir de `src/infra/db/tables.ts` |
-| `npm run db:seed` | aplica as migrações e cria os dados de exemplo se o banco estiver vazio |
+| `npm run db:seed` | aplica as migrações e insere os dados de exemplo que faltarem (idempotente) |
+| `npm run e2e` | teste ponta a ponta (Playwright): joga uma trivia do seed pelo quiz. Usa o servidor de dev na porta 3000 (sobe um se não houver). Antes, uma vez: `npx playwright install --with-deps chromium`. `E2E_SCREENSHOT_DIR=<pasta>` salva as capturas do quiz e do resultado. Não roda no CI |
 
 Variáveis de ambiente (ver [`.env.example`](.env.example)):
 
@@ -52,7 +70,7 @@ Em produção (`NODE_ENV=production`) as migrações **não** rodam sozinhas: ex
 | --- | --- |
 | `/` | destaques do ranking e trivias recentes |
 | `/criar` | criar trivia (pede nome do autor se não estiver logado) |
-| `/t/<id>` | link de compartilhamento: jogar, ver pontuação, compartilhar, reivindicar, editar (dono) |
+| `/t/<id>` | link de compartilhamento: jogar (uma pergunta por vez, com retorno imediato; teclas 1–4 escolhem e Enter avança), ver pontuação e revisão, compartilhar, reivindicar, editar (dono) |
 | `/t/<id>/editar` | edição (só o dono logado) |
 | `/ranking` | mais jogadas |
 | `/minhas` | trivias da conta |
@@ -64,6 +82,7 @@ Em produção (`NODE_ENV=production`) as migrações **não** rodam sozinhas: ex
 | `GET /api/trivias?order=recent\|popular&limit=20` | listas públicas (só trivias de conta) |
 | `GET /api/trivias/<id>` | trivia para jogar (sem gabarito) |
 | `PUT /api/trivias/<id>` | edita (dono) |
+| `POST /api/trivias/<id>/questions/<questionId>/check` | confere uma resposta `{ choiceId }` e devolve `{ questionId, chosenChoiceId, correctChoiceId, isCorrect }`. Não grava nada nem conta partida |
 | `POST /api/trivias/<id>/plays` | envia respostas `{ answers: [{ questionId, choiceId }] }`, devolve a pontuação, o total de partidas e `counted` (se esta partida contou; no máximo uma por pessoa por dia) |
 | `POST /api/trivias/<id>/claim` | salva uma trivia anônima na conta (precisa do cookie de reivindicação) |
 | `GET /api/ranking` | ranking |
@@ -86,12 +105,13 @@ src/
   contract/      DTOs JSON (Zod) e encoders usados por servidor e navegador
   server/        contexto da requisição (db, viewer, relógio), IP/visitante, mapeamento de erros → HTTP/páginas
   app/           rotas do Next.js (páginas e API)
-  components/    componentes React (editor, jogo, compartilhamento, login)
-  client/        chamadas do navegador à API, decodificadas com Zod
+  components/    componentes React (editor, quiz, compartilhamento, login)
+  client/        chamadas do navegador à API (decodificadas com Zod) e a máquina de estados pura do quiz
   lib/           Maybe, parseWith (safeParse → Result), jsonString
   scripts/       cleanup.ts, migrate.ts, seed.ts
   proxy.ts       proxy do Next.js: emite o cookie de visitante ao abrir uma trivia
 drizzle/         migrações SQL versionadas (drizzle-kit)
+e2e/             teste ponta a ponta (Playwright)
 .github/         CI (GitHub Actions)
 docs/
   adr/           decisões de arquitetura (MADR, pt-BR)
@@ -104,6 +124,7 @@ As decisões estão em [`docs/adr/`](docs/adr/README.md). Destaques:
 
 - Propriedade como união discriminada: `Owner = { type: "anonymous" } | { type: "user"; userId }` ([ADR 0008](docs/adr/0008-modelo-de-propriedade.md)).
 - Expiração por inatividade com função pura `isExpired`, verificação na leitura e job de limpeza ([ADR 0009](docs/adr/0009-expiracao-de-trivias-anonimas.md)).
+- Quiz com uma pergunta por vez: máquina de estados pura (`QuizState` como união discriminada) e conferência de cada resposta no servidor; o envio final continua decidindo a pontuação e a contagem. A conferência revela a resposta de cada pergunta, o que aceitamos numa trivia ([ADR 0019](docs/adr/0019-quiz-uma-pergunta-por-vez.md)).
 - Ranking só com trivias de conta ([ADR 0010](docs/adr/0010-elegibilidade-do-ranking.md)).
 - Auth local com scrypt e sessões no banco, pronta para receber OAuth ([ADR 0007](docs/adr/0007-autenticacao-opcional.md)), com limite de tentativas por IP ([ADR 0018](docs/adr/0018-limite-de-tentativas-de-login.md)).
 - Contagem única de partidas: `Visitor = { type: "user" } | { type: "visitor" } | { type: "network" }`, dia de São Paulo, tabela `play_dedup` e incremento atômico ([ADR 0016](docs/adr/0016-contagem-unica-de-partidas.md)). Nenhum IP é guardado em claro.
@@ -121,6 +142,7 @@ O código segue [`docs/conventions-typescript.md`](docs/conventions-typescript.m
 - **Mutação local** em `scoreSubmission` (um `Map` e um array que não escapam da função), permitida pela convenção.
 - **`response.json() as Promise<unknown>`** no cliente: estreita o `any` do `fetch` para `unknown`, que é então validado com Zod.
 - **`export const config` em `src/proxy.ts`:** o Next.js só reconhece o `config` do proxy declarado assim (lista de exports no topo não funciona); o `proxy` continua na lista do topo.
+- **`button role="radio"` nas alternativas do quiz** (`biome-ignore lint/a11y/useSemanticElements`): o rádio nativo escolhe a opção ao navegar com as setas, o que dispararia a conferência da resposta; os botões mantêm a semântica de grupo de rádio e a navegação por setas ([ADR 0019](docs/adr/0019-quiz-uma-pergunta-por-vez.md)).
 - **`// biome-ignore lint/suspicious/noArrayIndexKey`** nas linhas do editor e na lista de erros: perguntas e alternativas ainda não têm id enquanto são editadas.
 - **`noUnusedPrivateClassMembers` desligada no Biome:** o `_tag` privado dos tipos marcados nunca é lido de propósito.
 - **libSQL em vez de better-sqlite3:** a versão atual do better-sqlite3 exige Node ≥ 22 e não compila no ambiente sem toolchain ([ADR 0006](docs/adr/0006-sqlite-drizzle-libsql.md)).
@@ -131,4 +153,4 @@ O código segue [`docs/conventions-typescript.md`](docs/conventions-typescript.m
 - **Banco:** schema `pg-core` (com sua pasta de migrações) para Postgres (Neon/Supabase), ou Turso mantendo libSQL.
 - **Deploy:** Vercel + Postgres/Turso (SQLite em arquivo não persiste em serverless), ou container Node com volume; `npm run db:migrate` no release; definir `TRIVIA_VISITOR_SECRET`; agendar `npm run cleanup` (cron do Vercel ou do sistema); rodar atrás de um proxy que preencha `x-forwarded-for`.
 - **Produto:** perfil público do autor, categorias e busca, timer por pergunta, ranking por janela de tempo (ex.: semana), excluir trivia, links revogáveis, imagens nas perguntas, moderação/denúncia.
-- **Qualidade:** testes E2E com Playwright (incluindo o fluxo do cookie de visitante), proteção da branch `main` exigindo o CI, Dependabot/Renovate.
+- **Qualidade:** rodar o E2E no CI e cobrir mais fluxos (cookie de visitante, criação, login), proteção da branch `main` exigindo o CI, Dependabot/Renovate.

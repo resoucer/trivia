@@ -16,7 +16,8 @@
     "lint": "biome lint .",
     "format": "biome format --write .",
     "check": "biome check .",
-    "check:fix": "biome check --write ."
+    "check:fix": "biome check --write .",
+    "e2e": "playwright test"
   },
   "dependencies": {
     "@libsql/client": "^0.18.0",
@@ -29,6 +30,7 @@
   },
   "devDependencies": {
     "@biomejs/biome": "2.5.15",
+    "@playwright/test": "1.64.1",
     "@tailwindcss/postcss": "^4.3.3",
     "@types/node": "^20.19.43",
     "@types/react": "^19.3.0",

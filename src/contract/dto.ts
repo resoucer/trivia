@@ -1,12 +1,13 @@
 import { z } from "zod";
 import { isCounted, type PlayCounting } from "@/domain/trivia/play";
 import type { RankedTrivia } from "@/domain/trivia/ranking";
-import type { Score } from "@/domain/trivia/scoring";
+import type { AnswerCheck, QuestionResult, Score } from "@/domain/trivia/scoring";
 import type { PublicTrivia, Trivia, TriviaSummary } from "@/domain/trivia/trivia";
 import type { Viewer } from "@/domain/user/user";
 import { mapMaybe, toNullable } from "@/lib/maybe";
 
 export type {
+  AnswerCheckDto,
   CreatedTriviaDto,
   ErrorDto,
   PlayResultDto,
@@ -18,12 +19,14 @@ export type {
 };
 export {
   emptyQuestionForm,
+  encodeAnswerCheck,
   encodePlayResult,
   encodePublicTrivia,
   encodeRanked,
   encodeSummary,
   encodeTriviaForm,
   encodeViewer,
+  schema_AnswerCheckDto,
   schema_CreatedTriviaDto,
   schema_ErrorDto,
   schema_PlayResultDto,
@@ -69,20 +72,21 @@ const schema_PublicTriviaDto = z.object({
   ),
 });
 
+/** One graded question: response of `POST /api/trivias/<id>/questions/<questionId>/check` and line of a play result. */
+const schema_AnswerCheckDto = z.object({
+  questionId: z.string(),
+  chosenChoiceId: z.string(),
+  correctChoiceId: z.string(),
+  isCorrect: z.boolean(),
+});
+
 const schema_PlayResultDto = z.object({
   correctCount: z.number().int(),
   totalCount: z.number().int(),
   playCount: z.number().int(),
   /** false when this visitor already had a play counted for this trivia today (score is still returned). */
   counted: z.boolean(),
-  results: z.array(
-    z.object({
-      questionId: z.string(),
-      chosenChoiceId: z.string(),
-      correctChoiceId: z.string(),
-      isCorrect: z.boolean(),
-    }),
-  ),
+  results: z.array(schema_AnswerCheckDto),
 });
 
 const schema_CreatedTriviaDto = z.object({
@@ -117,6 +121,7 @@ type TriviaSummaryDto = z.infer<typeof schema_TriviaSummaryDto>;
 type RankedTriviaDto = z.infer<typeof schema_RankedTriviaDto>;
 type PublicTriviaDto = z.infer<typeof schema_PublicTriviaDto>;
 type PlayResultDto = z.infer<typeof schema_PlayResultDto>;
+type AnswerCheckDto = z.infer<typeof schema_AnswerCheckDto>;
 type CreatedTriviaDto = z.infer<typeof schema_CreatedTriviaDto>;
 type ErrorDto = z.infer<typeof schema_ErrorDto>;
 type ViewerDto = z.infer<typeof schema_ViewerDto>;
@@ -165,12 +170,7 @@ function encodePlayResult(score: Score, playCount: number, counting: PlayCountin
     totalCount: score.totalCount,
     playCount,
     counted: isCounted(counting),
-    results: score.results.map((r) => ({
-      questionId: r.questionId.value,
-      chosenChoiceId: r.chosenChoiceId.value,
-      correctChoiceId: r.correctChoiceId.value,
-      isCorrect: r.isCorrect,
-    })),
+    results: score.results.map(encodeQuestionResult),
   };
 }
 
@@ -204,4 +204,17 @@ function encodeTriviaForm(t: Trivia): TriviaFormDto {
 
 function emptyQuestionForm(): TriviaFormDto["questions"][number] {
   return { prompt: "", choices: ["", ""], correctChoiceIndex: 0 };
+}
+
+function encodeQuestionResult(r: QuestionResult): AnswerCheckDto {
+  return {
+    questionId: r.questionId.value,
+    chosenChoiceId: r.chosenChoiceId.value,
+    correctChoiceId: r.correctChoiceId.value,
+    isCorrect: r.isCorrect,
+  };
+}
+
+function encodeAnswerCheck(check: AnswerCheck): AnswerCheckDto {
+  return encodeQuestionResult(check);
 }

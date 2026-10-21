@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { loginUseCase, signupUseCase } from "@/application/authService";
 import {
+  checkAnswerUseCase,
   cleanupExpiredUseCase,
   createTriviaUseCase,
   editTriviaUseCase,
@@ -167,5 +168,48 @@ describe("contagem única de partidas por pessoa por dia", () => {
     expect((await play(db, visitorA, id, lateNightSp)).counted).toBe("counted");
     expect((await play(db, visitorA, id, afterUtcMidnight)).counted).toBe("already-counted-today");
     expect(await play(db, visitorA, id, nextDaySp)).toEqual({ counted: "counted", playCount: 2 });
+  });
+});
+
+describe("verificação de uma resposta (pergunta por pergunta)", () => {
+  it("responde se acertou e a correta, sem registrar partida", async () => {
+    const db = await freshDb();
+    const owner = await signup(db, "dono@x.com");
+    const id = (await createTriviaUseCase(db, owner, draftInput, NOW))._unsafeUnwrap().trivia.id.value;
+    const right = (await checkAnswerUseCase(db, id, "q1", { choiceId: "c2" }, NOW))._unsafeUnwrap();
+    expect(right.isCorrect).toBe(true);
+    const wrong = (await checkAnswerUseCase(db, id, "q2", { choiceId: "c2" }, NOW))._unsafeUnwrap();
+    expect({ isCorrect: wrong.isCorrect, correct: wrong.correctChoiceId.value }).toEqual({
+      isCorrect: false,
+      correct: "c1",
+    });
+    expect((await loadTrivia(db, id, NOW))._unsafeUnwrap().playCount).toBe(0);
+  });
+
+  it("erros: trivia inexistente, pergunta inválida, corpo inválido", async () => {
+    const db = await freshDb();
+    const owner = await signup(db, "dono@x.com");
+    const id = (await createTriviaUseCase(db, owner, draftInput, NOW))._unsafeUnwrap().trivia.id.value;
+    expect((await checkAnswerUseCase(db, "nao-existe", "q1", { choiceId: "c1" }, NOW))._unsafeUnwrapErr().type).toBe(
+      "not-found",
+    );
+    expect((await checkAnswerUseCase(db, id, "q9", { choiceId: "c1" }, NOW))._unsafeUnwrapErr().type).toBe("scoring");
+    expect((await checkAnswerUseCase(db, id, "../x", { choiceId: "c1" }, NOW))._unsafeUnwrapErr().type).toBe(
+      "validation",
+    );
+    expect((await checkAnswerUseCase(db, id, "q1", {}, NOW))._unsafeUnwrapErr().type).toBe("validation");
+  });
+
+  it("trivia anônima expirada some também na verificação", async () => {
+    const db = await freshDb();
+    const old = new Date(NOW.getTime() - 31 * DAY);
+    const created = (
+      await createTriviaUseCase(db, { type: "anonymous" }, { ...draftInput, authorName: "Ana" }, old)
+    )._unsafeUnwrap();
+    expect(
+      (await checkAnswerUseCase(db, created.trivia.id.value, "q1", { choiceId: "c1" }, NOW))._unsafeUnwrapErr(),
+    ).toEqual({
+      type: "not-found",
+    });
   });
 });
