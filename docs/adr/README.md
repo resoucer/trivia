@@ -26,3 +26,4 @@ Para criar um novo ADR: copie [0000-template.md](0000-template.md) para o próxi
 | [0017](0017-integracao-continua-github-actions.md) | Integração contínua com GitHub Actions | Aceito |
 | [0018](0018-limite-de-tentativas-de-login.md) | Limite de tentativas de login e cadastro por IP | Aceito |
 | [0019](0019-quiz-uma-pergunta-por-vez.md) | Quiz com uma pergunta por vez e conferência por pergunta | Aceito |
+| [0020](0020-questionarios-padrao-no-seed.md) | Questionários padrão no seed, com contagens de partidas fictícias | Aceito |
